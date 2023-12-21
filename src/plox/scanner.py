@@ -27,35 +27,39 @@ class Scanner:
         "while": TokenType.WHILE,
     }
 
-    def __init__(self, source: str, on_error: Callable, interactive: bool):
+    def __init__(self, source: str, on_lexical_error: Callable, interactive: bool):
         self.source = source
-        self.on_error = on_error
+        self.on_lexical_error = on_lexical_error
         self.interactive = interactive
-        self.block_com_nest_lvl = 0
+        self.block_comment_nest_lvl = 0
         self.start_current_lexeme = 0
         self.current_pos = 0
         self.current_line = 1
-        self.tokens = []
+        self.tokens: list[Token] = []
 
     def scan_tokens(self) -> list:
         """
         Scan all tokens from self.source
-        (Mostly delegates to self.scan_token)
+        (Mostly delegates to self._scan_token)
         """
-        while not self.eof_reached():
+        while not self._eof_reached():
            self.start_current_lexeme = self.current_pos
-           self.scan_token()
+           self._scan_token()
 
-        if not self.interactive:
-            self.tokens.append(Token(TokenType.EOF, "", None, self.current_line))
+        self.tokens.append(Token(
+            token_type = TokenType.EOF, 
+            lexeme = "", 
+            literal = None, 
+            line = self.current_line
+        ))
 
         return self.tokens
         
-    def scan_token(self):
+    def _scan_token(self):
         """
         Scan for the next token
         """
-        char = self.advance()
+        char = self._advance()
         match char:
             # whitespace
             case ' ': pass
@@ -64,123 +68,127 @@ class Scanner:
             case '\n': 
                 self.current_line += 1
             # single-char lexemes
-            case '(': self.add_token(TokenType.LEFT_PAREN)
-            case ')': self.add_token(TokenType.RIGHT_PAREN)
-            case '{': self.add_token(TokenType.LEFT_BRACE)
-            case '}': self.add_token(TokenType.RIGHT_BRACE)
-            case ',': self.add_token(TokenType.COMMA)
-            case '.': self.add_token(TokenType.DOT)
-            case '-': self.add_token(TokenType.MINUS)
-            case '+': self.add_token(TokenType.PLUS)
-            case ';': self.add_token(TokenType.SEMICOLON)
-            case '*': self.add_token(TokenType.STAR)
+            case '(': self._add_token(TokenType.LEFT_PAREN)
+            case ')': self._add_token(TokenType.RIGHT_PAREN)
+            case '{': self._add_token(TokenType.LEFT_BRACE)
+            case '}': self._add_token(TokenType.RIGHT_BRACE)
+            case ',': self._add_token(TokenType.COMMA)
+            case '.': self._add_token(TokenType.DOT)
+            case '-': self._add_token(TokenType.MINUS)
+            case '+': self._add_token(TokenType.PLUS)
+            case ';': self._add_token(TokenType.SEMICOLON)
+            case '*': self._add_token(TokenType.STAR)
             # one- and two- char lexemes
-            case '!': self.add_token(TokenType.BANG_EQUAL if self.match('=') else TokenType.BANG)
-            case '=': self.add_token(TokenType.EQUAL_EQUAL if self.match('=') else TokenType.EQUAL)
-            case '<': self.add_token(TokenType.LESS_EQUAL if self.match('=') else TokenType.LESS)
-            case '>': self.add_token(TokenType.GREATER_EQUAL if self.match('=') else TokenType.GREATER)
+            case '!': self._add_token(TokenType.BANG_EQUAL if self._match('=') else TokenType.BANG)
+            case '=': self._add_token(TokenType.EQUAL_EQUAL if self._match('=') else TokenType.EQUAL)
+            case '<': self._add_token(TokenType.LESS_EQUAL if self._match('=') else TokenType.LESS)
+            case '>': self._add_token(TokenType.GREATER_EQUAL if self._match('=') else TokenType.GREATER)
             # (block) comment or slash
             case '/': 
-                if self.match('/'):
+                if self._match('/'):
                     # comment ( // )
-                    while self.peek() != '\n' and not self.eof_reached():
-                        self.advance()
-                    
-                    self.add_token(TokenType.COMMENT)
-                elif self.match('*'):
+                    while self._peek() != '\n' and not self._eof_reached():
+                        self._advance()
+                    self._add_token(TokenType.COMMENT)
+                elif self._match('*'):
                     # block comment ( /* ... */ )
-                    while not(self.peek() == '*' and self.peek(1) == '/') or self.block_com_nest_lvl > 0:
-                        if self.peek() == '\n':
+                    while (self._peek() != '*' and self._peek(1) != '/') or self.block_comment_nest_lvl > 0:
+                        if self._peek() == '\n':
                             self.current_line += 1
-                        if self.peek() == '/' and self.peek(1) == '*':
+                        if self._peek() == '/' and self._peek(1) == '*':
                             # nested block comment begins
-                            self.block_com_nest_lvl += 1
-                        if self.peek() == '*' and self.peek(1) == '/':
+                            self.block_comment_nest_lvl += 1
+                        if self._peek() == '*' and self._peek(1) == '/':
                             # nested block comment ends
-                            self.block_com_nest_lvl -= 1
+                            self.block_comment_nest_lvl -= 1
 
-                        self.advance()
+                        self._advance()
 
                     # advance twice to consume close of block comment */
-                    self.advance()
-                    self.advance()
+                    self._advance()
+                    self._advance()
 
-                    self.add_token(TokenType.COMMENT)
+                    self._add_token(TokenType.COMMENT)
                 else:
                     # just slash
-                    self.add_token(TokenType.SLASH)
+                    self._add_token(TokenType.SLASH)
             # multi-char lexemes
             case '"': 
-                self.string()
+                self._string()
             case _ if char.isdecimal(): 
-                self.number()
+                self._number()
             case _ if char.isalpha() or char == '_': 
-                self.identifier_or_keyword()
+                self._identifier_or_keyword()
             # error error
             case _: 
-                self.on_error(self.current_line, f"Unexpected character: {char}")
+                self.on_lexical_error(self.current_line, f"Unexpected character: {char}")
 
-    def current_lexeme(self) -> str:
-       return self.source[self.start_current_lexeme:self.current_pos]
+    def _current_lexeme(self) -> str:
+       return self.source[self.start_current_lexeme : self.current_pos]
 
-    def identifier_or_keyword(self):
-        while self.peek().isalnum():
-            self.advance()
+    def _identifier_or_keyword(self):
+        while self._peek().isalnum():
+            self._advance()
 
-        lexeme = self.current_lexeme()
+        lexeme = self._current_lexeme()
         token_type = self.keywords.get(lexeme, TokenType.IDENTIFIER)    
 
-        self.add_token(token_type)
+        self._add_token(token_type)
 
-    def string(self):
+    def _string(self):
         """
         Scan until end of string literal
         Add STRING token if terminated
         """
-        while self.peek() != '"' and not self.eof_reached():
-            if self.peek() == '\n':
+        while self._peek() != '"' and not self._eof_reached():
+            if self._peek() == '\n':
                 self.current_line += 1
-            self.advance()
+            self._advance()
 
-        if self.eof_reached():
-            self.on_error(self.current_line, f"Unterminated string")
+        if self._eof_reached():
+            self.on_lexical_error(self.current_line, f"Unterminated string")
             return
             
-        self.advance() # move passed the closing "
+        self._advance() # move passed the closing "
 
         # trim quotes
-        val = self.source[self.start_current_lexeme+1:self.current_pos-1]
-        self.add_token(TokenType.STRING, val)
+        val = self.source[self.start_current_lexeme + 1 : self.current_pos - 1]
+        self._add_token(TokenType.STRING, val)
 
-    def number(self):
-        while self.peek().isdecimal():
-           self.advance()
+    def _number(self):
+        is_float = False
 
-        if self.peek() == '.' and self.peek(1).isdecimal():
-            self.advance()
+        while self._peek().isdecimal():
+           self._advance()
 
-            while self.peek().isdecimal():
-                self.advance()
+        if self._peek() == '.' and self._peek(1).isdecimal():
+            is_float = True
+            self._advance()
 
-        self.add_token(TokenType.NUMBER, self.current_lexeme())
+            while self._peek().isdecimal():
+                self._advance()
 
-    def eof_reached(self) -> bool:
+        val = float(self._current_lexeme()) if is_float else  int(self._current_lexeme())
+
+        self._add_token(TokenType.NUMBER, val)
+
+    def _eof_reached(self) -> bool:
         return self.current_pos >= len(self.source)
 
-    def peek(self, skip: int = 0) -> str:
+    def _peek(self, skip: int = 0) -> str:
         """
         Read and return first upcoming character
         """
-        if self.eof_reached():
+        if self._eof_reached():
             return '\0'
         return self.source[self.current_pos + skip]
 
-    def match(self, expected: str) -> bool:
+    def _match(self, expected: str) -> bool:
         """
         Check if the next character matches expected.
         If it does, move current_pos forward
         """
-        if self.eof_reached():
+        if self._eof_reached():
             return False
         if self.source[self.current_pos] != expected:
             return False
@@ -188,7 +196,7 @@ class Scanner:
         self.current_pos += 1
         return True
 
-    def advance(self) -> str:
+    def _advance(self) -> str:
         """ 
         Read & return current char and advance current_pos
         """
@@ -196,9 +204,9 @@ class Scanner:
         self.current_pos += 1
         return char
 
-    def add_token(self, token_type: TokenType, literal: Any = None):
+    def _add_token(self, token_type: TokenType, literal: Any = None):
         """
         Grab current lexeme and use to construct new Token and add to self.tokens
         """
-        lexeme = self.current_lexeme()
+        lexeme = self._current_lexeme()
         self.tokens.append(Token(token_type, lexeme, literal, self.current_line))
