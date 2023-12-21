@@ -38,3 +38,6 @@ venv.bak/
 
 # vim swap files
 *.swp 
+
+# vscode config
+.vscode
