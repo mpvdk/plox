@@ -35,10 +35,6 @@ class Plox:
             self.had_syntactic_error = False
             return
 
-        #printer = AstPrinter()
-        #expr_print = printer.print(expr)
-        #print(expr_print)
-
         self.interpreter.interpret(statements)
 
     def lexical_error(self, line: int, message: str):

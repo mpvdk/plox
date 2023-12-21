@@ -1,13 +1,12 @@
-from typing import Any
+from typing import Any, TypedDict
 
 from plox.plox_runtime_error import PloxRuntimeError
 from plox.token import Token
 
 
-class ValueInfo:
-    def __init__(self, value: Any, initialized: bool):
-        self.value = value
-        self.initialized = initialized
+class ValueInfo(TypedDict):
+    value: Any
+    initialized: bool
 
 
 class Environment:
@@ -25,11 +24,13 @@ class Environment:
 
         raise PloxRuntimeError(name, f"Undefined variable {name.lexeme}")
 
-    def define(self, name: str, value: Any | None = None):
+    def define(self, name: str, value: Any = None):
         if value:
-            self.values[name] = ValueInfo(value, True)
+            val_info: ValueInfo = {"value": value, "initialized": True}
+            self.values[name] = val_info
         else:
-            self.values[name] = ValueInfo(value, False)
+            val_info: ValueInfo = {"value": value, "initialized": False}
+            self.values[name] = val_info
 
     def get(self, name: Token):
         if name.lexeme in self.values:
