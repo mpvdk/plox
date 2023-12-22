@@ -8,6 +8,7 @@ from plox.expression import (
     Expression,
     GroupingExpr,
     LiteralExpr,
+    LogicalExpr,
     UnaryExpr,
     VariableExpr,
 )
@@ -123,7 +124,7 @@ class Parser:
     # Expressions
 
     def _assignment(self) -> Expression:
-        expr: Expression = self._equality()
+        expr: Expression = self._or()
 
         if self._match(TokenType.EQUAL):
             equals: Token = self._previous()
@@ -134,6 +135,27 @@ class Parser:
                 return AssignExpr(name, value)
 
             self.on_syntax_error(equals, "Invalid assignment target.")
+
+        return expr
+
+    def _or(self) -> Expression:
+        expr: Expression = self._and()
+
+        while self._match(TokenType.OR):
+            operator: Token = self._previous()
+            right: Expression = self._and()
+            expr = LogicalExpr(expr, operator, right)
+
+        return expr
+
+
+    def _and(self) -> Expression:
+        expr: Expression = self._equality()
+
+        while self._match(TokenType.AND):
+            operator: Token = self._previous()
+            right: Expression = self._equality()
+            expr = LogicalExpr(expr, operator, right)
 
         return expr
 

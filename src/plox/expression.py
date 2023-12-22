@@ -21,6 +21,10 @@ class ExpressionVisitor(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_logical_expr(self, expr):
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_unary_expr(self, expr):
         raise NotImplementedError
 
@@ -76,6 +80,17 @@ class LiteralExpr(Expression):
     def accept(self, visitor: ExpressionVisitor):
         """ Call the visitor """
         return visitor.visit_literal_expr(self)
+
+
+class LogicalExpr(Expression):
+    def __init__(self, left: Expression, operator: Token, right: Expression):
+        self.left = left
+        self.operator = operator
+        self.right = right
+
+    def accept(self, visitor: ExpressionVisitor):
+        """ Call the visitor """
+        return visitor.visit_logical_expr(self)
 
 
 class UnaryExpr(Expression):

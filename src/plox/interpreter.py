@@ -9,6 +9,7 @@ from plox.expression import (
     ExpressionVisitor,
     GroupingExpr,
     LiteralExpr,
+    LogicalExpr,
     UnaryExpr,
     VariableExpr,
 )
@@ -123,6 +124,19 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     def visit_literal_expr(self, expr: LiteralExpr):
         return expr.value
+
+    def visit_logical_expr(self, expr: LogicalExpr):
+        left = self._evaluate(expr.left)
+
+        if expr.operator.token_type == TokenType.OR:
+            if self._to_bool(left):
+                return left
+
+        if expr.operator.token_type == TokenType.AND:
+            if not self._to_bool(left):
+                return left
+
+        return self._evaluate(expr.right)
 
     def visit_unary_expr(self, expr: UnaryExpr):
         right = self._evaluate(expr.right)
