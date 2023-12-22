@@ -1,6 +1,4 @@
-from pprint import pprint
 import sys
-from plox.ast_printer import AstPrinter
 from plox.scanner import Scanner
 from plox.parser import Parser
 from plox.statement import Statement

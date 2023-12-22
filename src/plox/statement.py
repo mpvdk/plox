@@ -16,6 +16,10 @@ class StatementVisitor(ABC):
         raise NotImplementedError
     
     @abstractmethod
+    def visit_if_stmt(self, if_stmt):
+        raise NotImplementedError
+    
+    @abstractmethod
     def visit_print_stmt(self, print_stmt):
         raise NotImplementedError
 
@@ -50,6 +54,17 @@ class ExpressionStmt(Statement):
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
         return visitor.visit_expression_stmt(self)
+
+
+class IfStmt(Statement):
+    def __init__(self, condition: Expression, then_block: Statement, else_block: Statement | None):
+        self.condition = condition
+        self.then_block = then_block
+        self.else_block = else_block
+
+    def accept(self, visitor: StatementVisitor):
+        """ Call the visitor """
+        return visitor.visit_if_stmt(self)
 
 
 class PrintStmt(Statement):

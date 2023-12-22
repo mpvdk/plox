@@ -16,6 +16,7 @@ from plox.plox_runtime_error import PloxRuntimeError
 from plox.statement import (
     BlockStmt,
     ExpressionStmt,
+    IfStmt,
     PrintStmt,
     Statement,
     StatementVisitor,
@@ -49,6 +50,12 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:
         res = self._evaluate(expression_stmt.expression)
         print(res)
+
+    def visit_if_stmt(self, if_stmt: IfStmt) -> None:
+        if self._to_bool(self._evaluate(if_stmt.condition)):
+            self._execute(if_stmt.then_block)
+        elif if_stmt.else_block != None:
+            self._execute(if_stmt.else_block)
 
     def visit_print_stmt(self, print_stmt: PrintStmt) -> None:
         value = self._evaluate(print_stmt.expression)

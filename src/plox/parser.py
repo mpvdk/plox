@@ -1,7 +1,7 @@
 from typing import Callable
 from plox.token_type import TokenType
 from plox.token import Token
-from plox.statement import Statement
+from plox.statement import IfStmt, Statement
 from plox.expression import (
     AssignExpr,
     BinaryExpr,
@@ -62,6 +62,8 @@ class Parser:
             return None
 
     def _statement(self) -> Statement:
+        if self._match(TokenType.IF):
+            return self._if_statement()
         if self._match(TokenType.PRINT):
             return self._print_statement()
         if self._match(TokenType.LEFT_BRACE):
@@ -73,6 +75,23 @@ class Parser:
 
     # Statements
 
+    def _if_statement(self) -> IfStmt:
+        self._consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
+        condition: Expression = self._expression()
+        self._consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+
+        then_block: Statement = self._statement()
+        else_block: Statement | None = None
+        if self._match(TokenType.ELSE):
+            else_block = self._statement()
+
+        return IfStmt(condition, then_block, else_block)
+
+    def _print_statement(self) -> Statement:
+        value: Expression = self._expression()
+        self._consume(TokenType.SEMICOLON, "Expect ';' after value")
+        return PrintStmt(value)
+
     def _block_statement(self) -> list[Statement]:
         statements: list[Statement] = []
 
@@ -81,11 +100,6 @@ class Parser:
 
         self._consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
         return statements
-
-    def _print_statement(self) -> Statement:
-        value: Expression = self._expression()
-        self._consume(TokenType.SEMICOLON, "Expect ';' after value")
-        return PrintStmt(value)
 
     def _expression_statement(self) -> Statement:
         expr: Expression = self._expression()
