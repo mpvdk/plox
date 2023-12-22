@@ -17,7 +17,8 @@ from plox.statement import (
     BlockStmt,
     ExpressionStmt,
     PrintStmt,
-    VariableStmt
+    VariableStmt,
+    WhileStmt
 )
 
 class ParseError(Exception):
@@ -67,6 +68,8 @@ class Parser:
             return self._if_statement()
         if self._match(TokenType.PRINT):
             return self._print_statement()
+        if self._match(TokenType.WHILE):
+            return self._while_statement()
         if self._match(TokenType.LEFT_BRACE):
             return BlockStmt(self._block_statement())
         return self._expression_statement()
@@ -92,6 +95,14 @@ class Parser:
         value: Expression = self._expression()
         self._consume(TokenType.SEMICOLON, "Expect ';' after value")
         return PrintStmt(value)
+    
+    def _while_statement(self) -> Statement:
+        self._consume(TokenType.LEFT_PAREN, "Expected '(' after 'while'.")
+        condition: Expression = self._expression()
+        self._consume(TokenType.RIGHT_PAREN, "Expected ')' after condition.")
+        body: Statement = self._statement()
+
+        return WhileStmt(condition, body)
 
     def _block_statement(self) -> list[Statement]:
         statements: list[Statement] = []

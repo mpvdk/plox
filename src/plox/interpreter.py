@@ -22,6 +22,7 @@ from plox.statement import (
     Statement,
     StatementVisitor,
     VariableStmt,
+    WhileStmt,
 )
 from plox.token import Token
 from plox.token_type import TokenType
@@ -34,8 +35,12 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     def __init__(self, on_runtime_error: Callable):
         self.on_runtime_error = on_runtime_error
         self.current_env = Environment()
+        # Used to determine if we should print result of expression statement
+        # Answer is "no" by default (hence "False")
+        self.single_statement: bool = False
 
     def interpret(self, statements: list[Statement]):
+        self.single_statement = len(statements) == 1
         try:
             for statement in statements:
                 self._execute(statement)
@@ -50,7 +55,8 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:
         res = self._evaluate(expression_stmt.expression)
-        print(res)
+        if self.single_statement:
+            print(res)
 
     def visit_if_stmt(self, if_stmt: IfStmt) -> None:
         if self._to_bool(self._evaluate(if_stmt.condition)):
@@ -69,9 +75,13 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
         self.current_env.define(variable_stmt.name.lexeme, value)
 
+    def visit_while_stmt(self, while_stmt: WhileStmt) -> None:
+        while self._to_bool(self._evaluate(while_stmt.condition)):
+            self._execute(while_stmt.body)
+
     # Expression visits
 
-    def visit_assign_expr(self, expr: AssignExpr):
+    def visit_assign_expr(self, expr: AssignExpr) -> Any:
         value = self._evaluate(expr.value)
         self.current_env.assign(expr.name, value)
         return value

@@ -27,6 +27,10 @@ class StatementVisitor(ABC):
     def visit_variable_stmt(self, variable_stmt):
         raise NotImplementedError
 
+    @abstractmethod
+    def visit_while_stmt(self, while_stmt):
+        raise NotImplementedError
+
 
 class Statement(ABC):
     """
@@ -84,3 +88,14 @@ class VariableStmt(Statement):
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
         return visitor.visit_variable_stmt(self)
+
+
+class WhileStmt(Statement):
+    def __init__(self, condition: Expression, body: Statement):
+        self.condition = condition
+        self.body = body
+
+    def accept(self, visitor: StatementVisitor):
+        """ Call the visitor """
+        return visitor.visit_while_stmt(self)
+
