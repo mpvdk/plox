@@ -5,7 +5,7 @@ class TokenType(Enum):
     Enum class representing any one of the possible tokens used in the lox language
     """
 
-	# Single-character tokens
+    # Single-character tokens
     LEFT_PAREN = auto()
     RIGHT_PAREN = auto()
     LEFT_BRACE = auto()
@@ -35,6 +35,7 @@ class TokenType(Enum):
 
     # Keywords
     AND = auto()
+    BREAK = auto()
     CLASS = auto()
     ELSE = auto()
     FALSE = auto()

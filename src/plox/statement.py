@@ -12,6 +12,10 @@ class StatementVisitor(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_break_stmt(self):
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_expression_stmt(self, expression_stmt):
         raise NotImplementedError
     
@@ -49,6 +53,12 @@ class BlockStmt(Statement):
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
         return visitor.visit_block_stmt(self)
+
+
+class BreakStmt(Statement):
+    def accept(self, visitor: StatementVisitor):
+        """ Call the visitor """
+        return visitor.visit_break_stmt()
 
 
 class ExpressionStmt(Statement):

@@ -1,7 +1,6 @@
 from typing import Callable
 from plox.token_type import TokenType
 from plox.token import Token
-from plox.statement import IfStmt, Statement
 from plox.expression import (
     AssignExpr,
     BinaryExpr,
@@ -12,11 +11,13 @@ from plox.expression import (
     UnaryExpr,
     VariableExpr,
 )
-
 from plox.statement import (
     BlockStmt,
+    BreakStmt,
     ExpressionStmt,
+    IfStmt,
     PrintStmt,
+    Statement,
     VariableStmt,
     WhileStmt
 )
@@ -37,6 +38,7 @@ class Parser:
         self.tokens = tokens
         self.on_syntax_error = on_syntax_error
         self.current = 0
+        self.current_loop_depth = 0
 
     def parse(self) -> list[Statement]:
         """
@@ -64,6 +66,8 @@ class Parser:
             return None
 
     def _statement(self) -> Statement:
+        if self._match(TokenType.BREAK):
+            return self._break_statement()
         if self._match(TokenType.FOR):
             return self._for_statement()
         if self._match(TokenType.IF):
@@ -80,6 +84,12 @@ class Parser:
         return self._assignment()
 
     # Statements
+
+    def _break_statement(self):
+        if self.current_loop_depth == 0:
+            self._error(self._previous(), "'break' can only be used inside a loop")
+        self._consume(TokenType.SEMICOLON, "Expected ';' after 'break'")
+        return BreakStmt()
 
     def _for_statement(self) -> Statement:
         self._consume(TokenType.LEFT_PAREN, "Expected '(' after 'for'")
@@ -102,20 +112,25 @@ class Parser:
             increment = self._expression()
         self._consume(TokenType.RIGHT_PAREN, "Expted ')' after for clauses.")
 
-        body: Statement = self._statement()
+        try:
+            self.current_loop_depth = self.current_loop_depth + 1
 
-        if increment:
-            body = BlockStmt([body, ExpressionStmt(increment)])
+            body: Statement = self._statement()
 
-        if condition is None:
-            condition = LiteralExpr(True)
+            if increment is not None:
+                body = BlockStmt([body, ExpressionStmt(increment)])
 
-        body = WhileStmt(condition, body)
+            if condition is None:
+                condition = LiteralExpr(True)
 
-        if initializer is not None:
-            body = BlockStmt([initializer, body])
+            body = WhileStmt(condition, body)
 
-        return body
+            if initializer is not None:
+                body = BlockStmt([initializer, body])
+
+            return body
+        finally:
+            self.current_loop_depth = self.current_loop_depth - 1
 
 
     def _if_statement(self) -> IfStmt:
@@ -139,9 +154,13 @@ class Parser:
         self._consume(TokenType.LEFT_PAREN, "Expected '(' after 'while'.")
         condition: Expression = self._expression()
         self._consume(TokenType.RIGHT_PAREN, "Expected ')' after condition.")
-        body: Statement = self._statement()
+        try:
+            self.current_loop_depth = self.current_loop_depth + 1
+            body: Statement = self._statement()
 
-        return WhileStmt(condition, body)
+            return WhileStmt(condition, body)
+        finally:
+            self.current_loop_depth = self.current_loop_depth - 1
 
     def _block_statement(self) -> list[Statement]:
         statements: list[Statement] = []
@@ -262,7 +281,7 @@ class Parser:
 
         return self._primary()
 
-    def _primary(self):
+    def _primary(self) -> Expression:
         if self._match(TokenType.FALSE):
             return LiteralExpr(False)
 

@@ -27,6 +27,9 @@ from plox.statement import (
 from plox.token import Token
 from plox.token_type import TokenType
 
+class BreakException(Exception):
+    pass
+
 class Interpreter(ExpressionVisitor, StatementVisitor):
     """
     Class representing the interpreter.
@@ -53,6 +56,9 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         new_block_env = Environment(self.current_env)
         self._execute_block(block_stmt.statements, new_block_env)
 
+    def visit_break_stmt(self) -> None:
+        raise BreakException
+
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:
         res = self._evaluate(expression_stmt.expression)
         if self.single_statement:
@@ -76,8 +82,12 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         self.current_env.define(variable_stmt.name.lexeme, value)
 
     def visit_while_stmt(self, while_stmt: WhileStmt) -> None:
-        while self._to_bool(self._evaluate(while_stmt.condition)):
-            self._execute(while_stmt.body)
+        try:
+            while self._to_bool(self._evaluate(while_stmt.condition)):
+                self._execute(while_stmt.body)
+        except BreakException:
+            # Do nothing - just break out of loop
+            pass
 
     # Expression visits
 
