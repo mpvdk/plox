@@ -11,12 +11,17 @@ class StatementVisitor(ABC):
     def visit_block_stmt(self, block_stmt):
         raise NotImplementedError
 
+    @staticmethod
     @abstractmethod
-    def visit_break_stmt(self):
+    def visit_break_stmt():
         raise NotImplementedError
 
     @abstractmethod
     def visit_expression_stmt(self, expression_stmt):
+        raise NotImplementedError
+    
+    @abstractmethod
+    def visit_function_stmt(self, function_stmt):
         raise NotImplementedError
     
     @abstractmethod
@@ -68,6 +73,17 @@ class ExpressionStmt(Statement):
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
         return visitor.visit_expression_stmt(self)
+
+
+class FunctionStmt(Statement):
+    def __init__(self, name: Token, params: list[Token], body: list[Statement]):
+        self.name = name
+        self.params = params
+        self.body = body
+
+    def accept(self, visitor: StatementVisitor):
+        """ Call the visitor """
+        return visitor.visit_function_stmt(self)
 
 
 class IfStmt(Statement):

@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from enum import NAMED_FLAGS
 from typing import Any
 from plox.token import Token
 
@@ -9,15 +8,24 @@ class ExpressionVisitor(ABC):
     """
 
     @abstractmethod
+    def visit_assign_expr(self, expr):
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_binary_expr(self, expr):
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_call_expr(self, expr):
         raise NotImplementedError
 
     @abstractmethod
     def visit_grouping_expr(self, expr):
         raise NotImplementedError
 
+    @staticmethod
     @abstractmethod
-    def visit_literal_expr(self, expr):
+    def visit_literal_expr(expr):
         raise NotImplementedError
 
     @abstractmethod
@@ -51,6 +59,17 @@ class AssignExpr(Expression):
     def accept(self, visitor: ExpressionVisitor):
         """ Call the visitor """
         return visitor.visit_assign_expr(self)
+
+
+class CallExpr(Expression):
+    def __init__(self, callee: Expression, paren: Token, arguments: list[Expression]):
+        self.callee = callee
+        self.paren = paren
+        self.arguments = arguments
+
+    def accept(self, visitor: ExpressionVisitor):
+        """ Call the visitor """
+        return visitor.visit_call_expr(self)
 
 
 class BinaryExpr(Expression):

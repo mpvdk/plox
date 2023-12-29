@@ -5,6 +5,7 @@ from plox.environment import Environment
 from plox.expression import (
     AssignExpr,
     BinaryExpr,
+    CallExpr,
     Expression,
     ExpressionVisitor,
     GroupingExpr,
@@ -13,10 +14,12 @@ from plox.expression import (
     UnaryExpr,
     VariableExpr,
 )
+from plox.plox_function import PloxFunction
 from plox.plox_runtime_error import PloxRuntimeError
 from plox.statement import (
     BlockStmt,
     ExpressionStmt,
+    FunctionStmt,
     IfStmt,
     PrintStmt,
     Statement,
@@ -26,6 +29,7 @@ from plox.statement import (
 )
 from plox.token import Token
 from plox.token_type import TokenType
+from plox.plox_callable import PloxCallable
 
 class BreakException(Exception):
     pass
@@ -37,7 +41,8 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     def __init__(self, on_runtime_error: Callable):
         self.on_runtime_error = on_runtime_error
-        self.current_env = Environment()
+        self.global_env = Environment()
+        self.current_env = self.global_env
         # Used to determine if we should print result of expression statement
         # Answer is "no" by default (hence "False")
         self.single_statement: bool = False
@@ -53,16 +58,21 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     # Statement visits
 
     def visit_block_stmt(self, block_stmt: BlockStmt) -> None:
-        new_block_env = Environment(self.current_env)
-        self._execute_block(block_stmt.statements, new_block_env)
+        new_env = Environment(self.current_env)
+        self._execute_block(block_stmt.statements, new_env)
 
-    def visit_break_stmt(self) -> None:
+    @staticmethod
+    def visit_break_stmt() -> None:
         raise BreakException
 
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:
         res = self._evaluate(expression_stmt.expression)
         if self.single_statement:
             print(res)
+
+    def visit_function_stmt(self, function_stmt: FunctionStmt) -> None:
+        fn = PloxFunction(function_stmt)
+        self.current_env.define(function_stmt.name.lexeme, fn)
 
     def visit_if_stmt(self, if_stmt: IfStmt) -> None:
         if self._to_bool(self._evaluate(if_stmt.condition)):
@@ -95,6 +105,19 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         value = self._evaluate(expr.value)
         self.current_env.assign(expr.name, value)
         return value
+
+    def visit_call_expr(self, expr: CallExpr):
+        callee = self._evaluate(expr.callee)
+
+        arguments = [self._evaluate(arg) for arg in expr.arguments]
+
+        if not isinstance(callee, PloxCallable):
+            raise PloxRuntimeError(expr.paren, "Can only call functions and classes.")
+
+        if not len(arguments) == callee.arity():
+            raise PloxRuntimeError(expr.paren, f"Expected {callee.arity()} arguments, but got {len(arguments)}.")
+
+        callee.call(self, arguments)
 
     def visit_binary_expr(self, expr: BinaryExpr):
         left = self._evaluate(expr.left)
@@ -142,7 +165,8 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     def visit_grouping_expr(self, expr: GroupingExpr):
         return self._evaluate(expr.expression)
 
-    def visit_literal_expr(self, expr: LiteralExpr):
+    @staticmethod
+    def visit_literal_expr( expr: LiteralExpr):
         return expr.value
 
     def visit_logical_expr(self, expr: LogicalExpr):
@@ -178,7 +202,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     def _execute(self, statement: Statement):
         statement.accept(self)
 
-    def _execute_block(self, statements: list[Statement], new_env: Environment):
+    def execute_block(self, statements: list[Statement], new_env: Environment):
         prev_env: Environment = self.current_env
         self.current_env = new_env
 
