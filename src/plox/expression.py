@@ -20,6 +20,10 @@ class ExpressionVisitor(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_function_expr(self, expr):
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_grouping_expr(self, expr):
         raise NotImplementedError
 
@@ -70,6 +74,16 @@ class CallExpr(Expression):
     def accept(self, visitor: ExpressionVisitor):
         """ Call the visitor """
         return visitor.visit_call_expr(self)
+
+
+class FunctionExpr(Expression):
+    def __init__(self, params: list[Token], body: list[Any]):
+        self.params = params
+        self.body = body
+
+    def accept(self, visitor: ExpressionVisitor):
+        """ Call the visitor """
+        return visitor.visit_function_expr(self)
 
 
 class BinaryExpr(Expression):

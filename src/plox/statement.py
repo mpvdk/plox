@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from plox.token import Token
-from plox.expression import Expression
+from plox.expression import Expression, FunctionExpr
 
 class StatementVisitor(ABC):
     """
@@ -80,10 +80,9 @@ class ExpressionStmt(Statement):
 
 
 class FunctionStmt(Statement):
-    def __init__(self, name: Token, params: list[Token], body: list[Statement]):
+    def __init__(self, name: Token, function: FunctionExpr):
         self.name = name
-        self.params = params
-        self.body = body
+        self.function = function
 
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """

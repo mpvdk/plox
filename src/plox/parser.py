@@ -6,6 +6,7 @@ from plox.expression import (
     BinaryExpr,
     CallExpr,
     Expression,
+    FunctionExpr,
     GroupingExpr,
     LiteralExpr,
     LogicalExpr,
@@ -62,7 +63,8 @@ class Parser:
         try:
             if self._match(TokenType.CLASS):
                 return None
-            if self._match(TokenType.FUN):
+            if self._check(TokenType.FUN) and self._check_next(TokenType.IDENTIFIER):
+                self._consume(TokenType.FUN, "")
                 return self._function("function")
             if self._match(TokenType.VAR):
                 return self._var_declaration()
@@ -231,6 +233,9 @@ class Parser:
         Production: function declaration.
         """
         name: Token = self._consume(TokenType.IDENTIFIER, f"Expect {kind} name.")
+        return FunctionStmt(name, self._function_body(kind))
+
+    def _function_body(self, kind: Literal["function", "method"]):
         self._consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind}.")
 
         parameters: list[Token] = []
@@ -248,8 +253,7 @@ class Parser:
         self._consume(TokenType.LEFT_BRACE, "Expected '{' before function body")
         body: list[Statement] = self._block_statement()
 
-        return FunctionStmt(name, parameters, body)
-                
+        return FunctionExpr(parameters, body)
 
     def _var_declaration(self) -> VariableStmt:
         """
@@ -439,6 +443,9 @@ class Parser:
             self._consume(TokenType.RIGHT_PAREN, "Expected ')' after expression.")
             return GroupingExpr(expr)
 
+        if self._match(TokenType.FUN):
+            return self._function_body("function")
+
         self._error(self._peek(), "Expected expression.")
 
     # Utilities
@@ -450,6 +457,16 @@ class Parser:
         if self._at_end_of_token_list():
             return False
         return self._peek().token_type == token_type
+
+    def _check_next(self, token_type: TokenType) -> bool:
+        """
+        Determine if the second upcoming token matches an expectation.
+        """
+        if self._at_end_of_token_list():
+            return False
+        if self.tokens[self.current + 1].token_type == TokenType.EOF:
+            return False
+        return self.tokens[self.current + 1].token_type == token_type
 
     def _match(self, *args: TokenType) -> bool:
         """

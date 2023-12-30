@@ -1,15 +1,16 @@
 from typing import Any
+from plox.expression import FunctionExpr
 from plox.plox_callable import PloxCallable
 from plox.plox_return import PloxReturn
-from plox.statement import FunctionStmt
 from plox.environment import Environment
 #from plox.interpreter import Interpreter
 # can't import Interpreter due to some circular import error
 # TODO learn what the problem is and fix
 
 class PloxFunction(PloxCallable):
-    def __init__(self, declaration: FunctionStmt, closure: Environment):
+    def __init__(self, name: str | None, declaration: FunctionExpr, closure: Environment):
         super().__init__()
+        self.name = name
         self.declaration = declaration
         self.closure = closure
 
@@ -29,7 +30,13 @@ class PloxFunction(PloxCallable):
         return len(self.declaration.params)
 
     def to_string(self) -> str:
-        return f"<fn {self.declaration.name.lexeme}>"
+        if self.name:
+            return f"<fn {self.name}>"
+        else:
+            return "<fn>"
 
     def __str__(self) -> str:
-        return f"<fn {self.declaration.name.lexeme}>"
+        if self.name:
+            return f"<fn {self.name}>"
+        else:
+            return "<fn>"

@@ -9,6 +9,7 @@ from plox.expression import (
     CallExpr,
     Expression,
     ExpressionVisitor,
+    FunctionExpr,
     GroupingExpr,
     LiteralExpr,
     LogicalExpr,
@@ -73,7 +74,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
             print(res)
 
     def visit_function_stmt(self, function_stmt: FunctionStmt) -> None:
-        fn = PloxFunction(function_stmt, self.current_env)
+        fn = PloxFunction(function_stmt.name, function_stmt.function, self.current_env)
         self.current_env.define(function_stmt.name.lexeme, fn)
 
     def visit_if_stmt(self, if_stmt: IfStmt) -> None:
@@ -113,19 +114,6 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         value = self._evaluate(expr.value)
         self.current_env.assign(expr.name, value)
         return value
-
-    def visit_call_expr(self, expr: CallExpr) -> Any:
-        callee = self._evaluate(expr.callee)
-
-        arguments = [self._evaluate(arg) for arg in expr.arguments]
-
-        if not isinstance(callee, PloxCallable):
-            raise PloxRuntimeError(expr.paren, "Can only call functions and classes.")
-
-        if not len(arguments) == callee.arity():
-            raise PloxRuntimeError(expr.paren, f"Expected {callee.arity()} arguments, but got {len(arguments)}.")
-
-        return callee.call(self, arguments)
 
     def visit_binary_expr(self, expr: BinaryExpr):
         left = self._evaluate(expr.left)
@@ -169,6 +157,22 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
                 return left <= right
 
         return None
+
+    def visit_call_expr(self, expr: CallExpr) -> Any:
+        callee = self._evaluate(expr.callee)
+
+        arguments = [self._evaluate(arg) for arg in expr.arguments]
+
+        if not isinstance(callee, PloxCallable):
+            raise PloxRuntimeError(expr.paren, "Can only call functions and classes.")
+
+        if not len(arguments) == callee.arity():
+            raise PloxRuntimeError(expr.paren, f"Expected {callee.arity()} arguments, but got {len(arguments)}.")
+
+        return callee.call(self, arguments)
+
+    def visit_function_expr(self, expr: FunctionExpr) -> Any:
+        return PloxFunction(None, expr, self.global_env)
 
     def visit_grouping_expr(self, expr: GroupingExpr):
         return self._evaluate(expr.expression)
