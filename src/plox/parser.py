@@ -19,6 +19,7 @@ from plox.statement import (
     FunctionStmt,
     IfStmt,
     PrintStmt,
+    ReturnStmt,
     Statement,
     VariableStmt,
     WhileStmt
@@ -82,6 +83,8 @@ class Parser:
             return self._if_statement()
         if self._match(TokenType.PRINT):
             return self._print_statement()
+        if self._match(TokenType.RETURN):
+            return self._return_statement()
         if self._match(TokenType.WHILE):
             return self._while_statement()
         if self._match(TokenType.LEFT_BRACE):
@@ -172,6 +175,17 @@ class Parser:
         value: Expression = self._expression()
         self._consume(TokenType.SEMICOLON, "Expect ';' after value")
         return PrintStmt(value)
+
+    def _return_statement(self) -> ReturnStmt:
+        """
+        Production: return statement.
+        """
+        keyword: Token = self._previous()
+        value: Expression | None = None
+        if not self._check(TokenType.SEMICOLON):
+            value = self._expression()
+        self._consume(TokenType.SEMICOLON, "Expect ';' after return value")
+        return ReturnStmt(keyword, value)
     
     def _while_statement(self) -> WhileStmt:
         """

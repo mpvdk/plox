@@ -1,6 +1,7 @@
 from math import ceil
 from typing import Any, Callable
 
+from plox.plox_return import PloxReturn
 from plox.environment import Environment
 from plox.expression import (
     AssignExpr,
@@ -14,6 +15,7 @@ from plox.expression import (
     UnaryExpr,
     VariableExpr,
 )
+from plox.plox_callable import PloxCallable
 from plox.plox_function import PloxFunction
 from plox.plox_runtime_error import PloxRuntimeError
 from plox.statement import (
@@ -22,6 +24,7 @@ from plox.statement import (
     FunctionStmt,
     IfStmt,
     PrintStmt,
+    ReturnStmt,
     Statement,
     StatementVisitor,
     VariableStmt,
@@ -29,7 +32,6 @@ from plox.statement import (
 )
 from plox.token import Token
 from plox.token_type import TokenType
-from plox.plox_callable import PloxCallable
 
 class BreakException(Exception):
     pass
@@ -59,7 +61,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     def visit_block_stmt(self, block_stmt: BlockStmt) -> None:
         new_env = Environment(self.current_env)
-        self._execute_block(block_stmt.statements, new_env)
+        self.execute_block(block_stmt.statements, new_env)
 
     @staticmethod
     def visit_break_stmt() -> None:
@@ -71,7 +73,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
             print(res)
 
     def visit_function_stmt(self, function_stmt: FunctionStmt) -> None:
-        fn = PloxFunction(function_stmt)
+        fn = PloxFunction(function_stmt, self.current_env)
         self.current_env.define(function_stmt.name.lexeme, fn)
 
     def visit_if_stmt(self, if_stmt: IfStmt) -> None:
@@ -83,6 +85,12 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     def visit_print_stmt(self, print_stmt: PrintStmt) -> None:
         value = self._evaluate(print_stmt.expression)
         print(self._stringify(value))
+
+    def visit_return_stmt(self, return_stmt: ReturnStmt) -> None:
+        value = None
+        if return_stmt.value != None:
+            value = self._evaluate(return_stmt.value)
+        raise PloxReturn(value)
 
     def visit_variable_stmt(self, variable_stmt: VariableStmt) -> None:
         value = None
@@ -106,7 +114,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         self.current_env.assign(expr.name, value)
         return value
 
-    def visit_call_expr(self, expr: CallExpr):
+    def visit_call_expr(self, expr: CallExpr) -> Any:
         callee = self._evaluate(expr.callee)
 
         arguments = [self._evaluate(arg) for arg in expr.arguments]
@@ -117,7 +125,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         if not len(arguments) == callee.arity():
             raise PloxRuntimeError(expr.paren, f"Expected {callee.arity()} arguments, but got {len(arguments)}.")
 
-        callee.call(self, arguments)
+        return callee.call(self, arguments)
 
     def visit_binary_expr(self, expr: BinaryExpr):
         left = self._evaluate(expr.left)
@@ -207,7 +215,6 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         self.current_env = new_env
 
         try:
-
             for statement in statements:
                 self._execute(statement)
         finally:

@@ -33,6 +33,10 @@ class StatementVisitor(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_return_stmt(self, return_stmt):
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_variable_stmt(self, variable_stmt):
         raise NotImplementedError
 
@@ -104,6 +108,16 @@ class PrintStmt(Statement):
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
         return visitor.visit_print_stmt(self)
+
+
+class ReturnStmt(Statement):
+    def __init__(self, keyword: Token, value: Expression | None):
+        self.keyword = keyword
+        self.value = value
+
+    def accept(self, visitor: StatementVisitor):
+        """ Call the visitor """
+        return visitor.visit_return_stmt(self)
 
 
 class VariableStmt(Statement):
