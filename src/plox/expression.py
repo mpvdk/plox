@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 from plox.token import Token
@@ -8,40 +9,40 @@ class ExpressionVisitor(ABC):
     """
 
     @abstractmethod
-    def visit_assign_expr(self, expr):
+    def visit_assign_expr(self, assign_expr: AssignExpr):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_binary_expr(self, expr):
+    def visit_binary_expr(self, binary_expr: BinaryExpr):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_call_expr(self, expr):
+    def visit_call_expr(self, call_expr: CallExpr):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_function_expr(self, expr):
+    def visit_function_expr(self, function_expr: FunctionExpr):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_grouping_expr(self, expr):
+    def visit_grouping_expr(self, grouping_expr: GroupingExpr):
         raise NotImplementedError
 
     @staticmethod
     @abstractmethod
-    def visit_literal_expr(expr):
+    def visit_literal_expr(literal_expr: LiteralExpr):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_logical_expr(self, expr):
+    def visit_logical_expr(self, logical_expr: LogicalExpr):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_unary_expr(self, expr):
+    def visit_unary_expr(self, unary_expr: UnaryExpr):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_variable_expr(self, expr):
+    def visit_variable_expr(self, variable_expr: VariableExpr):
         raise NotImplementedError
 
 
@@ -65,6 +66,17 @@ class AssignExpr(Expression):
         return visitor.visit_assign_expr(self)
 
 
+class BinaryExpr(Expression):
+    def __init__(self, left: Expression, operator: Token, right: Expression):
+        self.left = left
+        self.operator = operator
+        self.right = right
+    
+    def accept(self, visitor: ExpressionVisitor):
+        """ Call the visitor """
+        return visitor.visit_binary_expr(self)
+
+
 class CallExpr(Expression):
     def __init__(self, callee: Expression, paren: Token, arguments: list[Expression]):
         self.callee = callee
@@ -84,17 +96,6 @@ class FunctionExpr(Expression):
     def accept(self, visitor: ExpressionVisitor):
         """ Call the visitor """
         return visitor.visit_function_expr(self)
-
-
-class BinaryExpr(Expression):
-    def __init__(self, left: Expression, operator: Token, right: Expression):
-        self.left = left
-        self.operator = operator
-        self.right = right
-    
-    def accept(self, visitor: ExpressionVisitor):
-        """ Call the visitor """
-        return visitor.visit_binary_expr(self)
 
 
 class GroupingExpr(Expression):

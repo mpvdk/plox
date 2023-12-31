@@ -1,6 +1,7 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from plox.token import Token
-from plox.expression import Expression, FunctionExpr
+from plox.expression import Expression, FunctionExpr, VariableExpr
 
 class StatementVisitor(ABC):
     """
@@ -8,7 +9,7 @@ class StatementVisitor(ABC):
     """
 
     @abstractmethod
-    def visit_block_stmt(self, block_stmt):
+    def visit_block_stmt(self, block_stmt: BlockStmt):
         raise NotImplementedError
 
     @staticmethod
@@ -17,31 +18,31 @@ class StatementVisitor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_expression_stmt(self, expression_stmt):
+    def visit_expression_stmt(self, expression_stmt: ExpressionStmt):
         raise NotImplementedError
     
     @abstractmethod
-    def visit_function_stmt(self, function_stmt):
+    def visit_function_stmt(self, function_stmt: FunctionStmt):
         raise NotImplementedError
     
     @abstractmethod
-    def visit_if_stmt(self, if_stmt):
+    def visit_if_stmt(self, if_stmt: IfStmt):
         raise NotImplementedError
     
     @abstractmethod
-    def visit_print_stmt(self, print_stmt):
+    def visit_print_stmt(self, print_stmt: PrintStmt):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_return_stmt(self, return_stmt):
+    def visit_return_stmt(self, return_stmt: ReturnStmt):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_variable_stmt(self, variable_stmt):
+    def visit_variable_stmt(self, variable_stmt: VariableStmt):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_while_stmt(self, while_stmt):
+    def visit_while_stmt(self, while_stmt: WhileStmt):
         raise NotImplementedError
 
 

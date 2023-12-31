@@ -1,3 +1,5 @@
+
+from __future__ import annotations
 from typing import Any, TypedDict
 
 from plox.plox_runtime_error import PloxRuntimeError
@@ -25,6 +27,9 @@ class Environment:
 
         raise PloxRuntimeError(name, f"Undefined variable {name.lexeme}")
 
+    def assign_at(self, distance: int, name: Token, value: Any):
+        self._ancestor(distance).values[name.lexeme] = value
+
     def define(self, name: str, value: Any = None):
         if value != None:
             val_info: ValueInfo = {"value": value, "initialized": True}
@@ -43,3 +48,12 @@ class Environment:
             return self.enclosing.get(name)
 
         raise PloxRuntimeError(name, f"Undefined variable {name.lexeme}")
+
+    def get_at(self, distance: int, name: str):
+        return self._ancestor(distance).values.get(name)
+
+    def _ancestor(self, distance: int) -> Environment:
+        env: Environment = self
+        for _ in range(distance):
+            env = env.enclosing
+        return env

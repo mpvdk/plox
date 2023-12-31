@@ -1,6 +1,7 @@
 import sys
 from plox.scanner import Scanner
 from plox.parser import Parser
+from plox.resolver import Resolver
 from plox.statement import Statement
 from plox.token import Token
 from plox.token_type import TokenType
@@ -32,6 +33,9 @@ class Plox:
             self.had_lexical_error = False
             self.had_syntactic_error = False
             return
+
+        resolver = Resolver(self.interpreter)
+        resolver.resolve_statements(statements)
 
         self.interpreter.interpret(statements)
 

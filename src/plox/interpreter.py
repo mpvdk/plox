@@ -46,6 +46,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         self.on_runtime_error = on_runtime_error
         self.global_env = Environment()
         self.current_env = self.global_env
+        self.locals: dict[Expression, int] = {}
         # Used to determine if we should print result of expression statement
         # Answer is "no" by default (hence "False")
         self.single_statement: bool = False
@@ -110,15 +111,19 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     # Expression visits
 
-    def visit_assign_expr(self, expr: AssignExpr) -> Any:
-        value = self._evaluate(expr.value)
-        self.current_env.assign(expr.name, value)
+    def visit_assign_expr(self, assign_expr: AssignExpr) -> Any:
+        value = self._evaluate(assign_expr.value)
+        distance: int = self.locals[assign_expr]
+        if distance != None:
+            self.current_env.assign_at(distance, assign_expr.name, value)
+        else:
+            self.global_env.assign(assign_expr.name, value)
         return value
 
-    def visit_binary_expr(self, expr: BinaryExpr):
-        left = self._evaluate(expr.left)
-        right = self._evaluate(expr.right)
-        operator_token_type = expr.operator.token_type
+    def visit_binary_expr(self, binary_expr: BinaryExpr):
+        left = self._evaluate(binary_expr.left)
+        right = self._evaluate(binary_expr.right)
+        operator_token_type = binary_expr.operator.token_type
         
         if operator_token_type in (
             TokenType.GREATER,
@@ -129,16 +134,16 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
             TokenType.SLASH,
             TokenType.STAR,
         ):
-            self._check_number_operands(expr.operator, left, right)
+            self._check_number_operands(binary_expr.operator, left, right)
 
         match operator_token_type:
             # Arithmetic
             case TokenType.MINUS:
                 return left - right
             case TokenType.PLUS:
-                return self._binary_plus(expr, left, right)
+                return self._binary_plus(binary_expr, left, right)
             case TokenType.SLASH:
-                return self._binary_slash(expr, left, right)
+                return self._binary_slash(binary_expr, left, right)
             case TokenType.STAR:
                 return left * right
             # Equality
@@ -158,53 +163,54 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
         return None
 
-    def visit_call_expr(self, expr: CallExpr) -> Any:
-        callee = self._evaluate(expr.callee)
+    def visit_call_expr(self, call_expr: CallExpr) -> Any:
+        callee = self._evaluate(call_expr.callee)
 
-        arguments = [self._evaluate(arg) for arg in expr.arguments]
+        arguments = [self._evaluate(arg) for arg in call_expr.arguments]
 
         if not isinstance(callee, PloxCallable):
-            raise PloxRuntimeError(expr.paren, "Can only call functions and classes.")
+            raise PloxRuntimeError(call_expr.paren, "Can only call functions and classes.")
 
         if not len(arguments) == callee.arity():
-            raise PloxRuntimeError(expr.paren, f"Expected {callee.arity()} arguments, but got {len(arguments)}.")
+            raise PloxRuntimeError(call_expr.paren, f"Expected {callee.arity()} arguments, but got {len(arguments)}.")
 
         return callee.call(self, arguments)
 
-    def visit_function_expr(self, expr: FunctionExpr) -> Any:
-        return PloxFunction(None, expr, self.global_env)
+    def visit_function_expr(self, function_expr: FunctionExpr) -> Any:
+        return PloxFunction(None, function_expr, self.global_env)
 
-    def visit_grouping_expr(self, expr: GroupingExpr):
-        return self._evaluate(expr.expression)
+    def visit_grouping_expr(self, grouping_expr: GroupingExpr):
+        return self._evaluate(grouping_expr.expression)
 
     @staticmethod
-    def visit_literal_expr( expr: LiteralExpr):
-        return expr.value
+    def visit_literal_expr(literal_expr: LiteralExpr):
+        return literal_expr.value
 
-    def visit_logical_expr(self, expr: LogicalExpr):
-        left = self._evaluate(expr.left)
+    def visit_logical_expr(self, logical_expr: LogicalExpr):
+        left = self._evaluate(logical_expr.left)
 
-        if expr.operator.token_type == TokenType.OR:
+        if logical_expr.operator.token_type == TokenType.OR:
             if self._to_bool(left):
                 return left
 
-        if expr.operator.token_type == TokenType.AND:
+        if logical_expr.operator.token_type == TokenType.AND:
             if not self._to_bool(left):
                 return left
 
         return self._evaluate(expr.right)
 
-    def visit_unary_expr(self, expr: UnaryExpr):
-        right = self._evaluate(expr.right)
+    def visit_unary_expr(self, unary_expr: UnaryExpr):
+        right = self._evaluate(unary_expr.right)
 
-        match expr.operator:
+        match unary_expr.operator:
             case TokenType.MINUS:
                 return -float(right)
             case TokenType.BANG:
                 return not Interpreter._to_bool(right)
 
-    def visit_variable_expr(self, expr: VariableExpr):
-        return self.current_env.get(expr.name)
+    def visit_variable_expr(self, variable_expr: VariableExpr):
+        #return self.current_env.get(variable_expr.name)
+        return self._look_up_variable(variable_expr.name, variable_expr)
 
     # Misc
 
@@ -213,6 +219,9 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     def _execute(self, statement: Statement):
         statement.accept(self)
+
+    def resolve(self, expression: Expression, depth: int):
+        self.locals[expression] = depth
 
     def execute_block(self, statements: list[Statement], new_env: Environment):
         prev_env: Environment = self.current_env
@@ -224,6 +233,12 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         finally:
             self.current_env = prev_env
 
+    def _look_up_variable(self, name: str, variable_expr: VariableExpr):
+        distance: int = self.locals[variable_expr]
+        if distance != None:
+            return self.current_env.get_at(distance, name.lexeme)
+        else:
+            return self.global_env.get(name)
 
     @staticmethod
     def _to_bool(value) -> bool:
