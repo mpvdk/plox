@@ -1,4 +1,5 @@
 from typing import Callable
+from plox.class_type import ClassType
 from plox.expression import (
     AssignExpr, 
     BinaryExpr,
@@ -40,6 +41,7 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         self.scopes: list[dict[str, bool]] = []
         self.on_semantic_error = on_semantic_error
         self.current_function = FunctionType.NONE
+        self.current_class = ClassType.NONE
 
     # Statement visits
 
@@ -53,6 +55,9 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         return None
 
     def visit_class_stmt(self, class_stmt: ClassStmt) -> None:
+        enclosing_class: ClassType = self.current_class
+        self.current_class = ClassType.CLASS
+        
         self._declare(class_stmt.name)
         self._define(class_stmt.name)
 
@@ -64,6 +69,7 @@ class Resolver(ExpressionVisitor, StatementVisitor):
             self._resolve_function(method.function, declaration)
 
         self._end_scope()
+        self.current_class = enclosing_class
 
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:
         self._resolve_expression(expression_stmt.expression)
@@ -135,7 +141,10 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         self._resolve_expression(set_expr.object)
 
     def visit_this_expr(self, this_expr: ThisExpr):
-        self._resolve_local(this_expr, this_expr.keyword)
+        if self.current_class is not ClassType.CLASS:
+            self.on_semantic_error(this_expr.keyword, "Can't use 'this' outise of a class.")
+        else:
+            self._resolve_local(this_expr, this_expr.keyword)
 
     def visit_unary_expr(self, unary_expr: UnaryExpr) -> None:
         self._resolve_expression(unary_expr.right)

@@ -60,12 +60,12 @@ class Plox:
         else:
             print(f"[line {token.line}] Parse error at {token.lexeme}: {message}")
 
-    def semantic_error(self, error: PloxRuntimeError):
+    def semantic_error(self, token: Token, message: str):
         """
         Handle semantic error.
         """
         self.had_semantic_error = True
-        print(f"[line {error.token.line}] Runtime error: {error.message}")
+        print(f"[line {token.line}] Semantic error: {message}")
 
     def _run_prompt(self):
         """
