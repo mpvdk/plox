@@ -3,6 +3,7 @@ from plox.expression import FunctionExpr
 from plox.plox_callable import PloxCallable
 from plox.plox_return import PloxReturn
 from plox.environment import Environment
+#from plox.plox_instance import PloxInstance
 #from plox.interpreter import Interpreter
 #can't import because of circular import
 #TODO: fix (it's annoying...)
@@ -16,6 +17,12 @@ class PloxFunction(PloxCallable):
 
     def arity(self) -> int:
         return len(self.declaration.params)
+
+    # instance is a PloxInstance but circular import issues...
+    def bind(self, instance):
+        environment: Environment = Environment(self.closure)
+        environment.define("this", instance)
+        return PloxFunction(self.name, self.declaration, environment)
 
     def call(self, interpreter, arguments: list[Any]):
         environment: Environment = Environment(self.closure)

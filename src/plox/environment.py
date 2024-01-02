@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from typing import Any, TypedDict
 
@@ -52,8 +51,9 @@ class Environment:
         raise PloxRuntimeError(name, f"Undefined variable {name.lexeme}")
 
     def get_at(self, distance: int, name: str):
-        val_info: ValueInfo = self._ancestor(distance).values.get(name)
-        return val_info['value']
+        val_info: ValueInfo | None = self._ancestor(distance).values.get(name)
+        if val_info is not None:
+            return val_info['value']
 
     def _ancestor(self, distance: int) -> Environment:
         env: Environment = self

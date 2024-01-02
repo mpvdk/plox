@@ -11,6 +11,7 @@ from plox.expression import (
     LiteralExpr,
     LogicalExpr,
     SetExpr,
+    ThisExpr,
     UnaryExpr, 
     VariableExpr
 )
@@ -55,9 +56,14 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         self._declare(class_stmt.name)
         self._define(class_stmt.name)
 
+        self._begin_scope()
+        self.scopes[-1]["this"] = True
+
         for method in class_stmt.methods:
             declaration: FunctionType = FunctionType.METHOD
             self._resolve_function(method.function, declaration)
+
+        self._end_scope()
 
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:
         self._resolve_expression(expression_stmt.expression)
@@ -128,6 +134,9 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         self._resolve_expression(set_expr.value)
         self._resolve_expression(set_expr.object)
 
+    def visit_this_expr(self, this_expr: ThisExpr):
+        self._resolve_local(this_expr, this_expr.keyword)
+
     def visit_unary_expr(self, unary_expr: UnaryExpr) -> None:
         self._resolve_expression(unary_expr.right)
 
@@ -154,9 +163,10 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         """
         Inform the interpreter about the depth of a given identifier.
         """
-        for i, scope in reversed(list(enumerate(self.scopes))):
+        for i, scope in list(enumerate(reversed(self.scopes))):
             if name.lexeme in scope:
                 self.interpreter.resolve(expr, i)
+                return
 
     def _resolve_function(self, function_expr: FunctionExpr, type: FunctionType) -> None:
         """

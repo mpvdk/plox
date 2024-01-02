@@ -47,6 +47,10 @@ class ExpressionVisitor(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_this_expr(self, this_expr: ThisExpr):
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_unary_expr(self, unary_expr: UnaryExpr):
         raise NotImplementedError
 
@@ -155,6 +159,15 @@ class SetExpr(Expression):
     def accept(self, visitor: ExpressionVisitor):
         """ Call the visitor """
         return visitor.visit_set_expr(self)
+
+
+class ThisExpr(Expression):
+    def __init__(self, keyword: Token):
+        self.keyword: Token = keyword
+
+    def accept(self, visitor: ExpressionVisitor):
+        """ Call the visitor """
+        return visitor.visit_this_expr(self)
 
 
 class UnaryExpr(Expression):

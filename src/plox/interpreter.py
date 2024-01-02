@@ -17,6 +17,7 @@ from plox.expression import (
     LiteralExpr,
     LogicalExpr,
     SetExpr,
+    ThisExpr,
     UnaryExpr,
     VariableExpr,
 )
@@ -78,7 +79,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
         methods: dict[str, PloxFunction] = {}
         for method in class_stmt.methods:
-            function: PloxFunction = PloxFunction(None, method.function, self.current_env)
+            function: PloxFunction = PloxFunction(method.name.lexeme, method.function, self.current_env)
             methods[method.name.lexeme] = function
 
         plox_class: PloxClass = PloxClass(class_stmt.name.lexeme, methods)
@@ -232,6 +233,9 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
         object.set(set_expr.name, value)
         return value
+
+    def visit_this_expr(self, this_expr: ThisExpr) -> Any:
+        return self._look_up_variable(this_expr.keyword, this_expr)
 
     def visit_unary_expr(self, unary_expr: UnaryExpr) -> float | bool | None:
         right = self._evaluate(unary_expr.right)

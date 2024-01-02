@@ -16,7 +16,7 @@ class PloxInstance:
 
         method: PloxFunction | None = self.plox_class.find_method(identifier.lexeme)
         if method is not None:
-            return method
+            return method.bind(self)
 
         raise PloxRuntimeError(identifier, f"Undefined property '{identifier.lexeme}'.")
 
