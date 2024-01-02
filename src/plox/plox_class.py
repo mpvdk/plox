@@ -4,9 +4,10 @@ from plox.plox_function import PloxFunction
 
 
 class PloxClass(PloxCallable):
-    def __init__(self, name: str, methods: dict[str, PloxFunction]):
+    def __init__(self, name: str, superclass: "PloxClass | None", methods: dict[str, PloxFunction]):
         super().__init__()
         self.name: str = name
+        self.superclass: PloxClass | None = superclass
         self.methods: dict[str, PloxFunction] = methods
 
     def arity(self) -> int:

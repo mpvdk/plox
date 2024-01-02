@@ -70,8 +70,9 @@ class BlockStmt(Statement):
 
 
 class ClassStmt(Statement):
-    def __init__(self, name: Token, methods: list[FunctionStmt]):
+    def __init__(self, name: Token, superclass: VariableExpr | None, methods: list[FunctionStmt]):
         self.name: Token = name
+        self.superclass: VariableExpr | None = superclass
         self.methods: list[FunctionStmt] = methods
 
     def accept(self, visitor: StatementVisitor):

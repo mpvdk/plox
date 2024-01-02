@@ -75,6 +75,12 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         raise BreakException
 
     def visit_class_stmt(self, class_stmt: ClassStmt) -> None:
+        superclass: Any = None
+        if class_stmt.superclass is not None:
+            superclass = self._evaluate(class_stmt.superclass)
+            if not isinstance(superclass, PloxClass):
+                raise PloxRuntimeError(class_stmt.superclass.name, "Superclass must be a class.")
+
         self.current_env.define(class_stmt.name.lexeme, None)
 
         methods: dict[str, PloxFunction] = {}
@@ -83,7 +89,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
             function: PloxFunction = PloxFunction(method.name.lexeme, method.function, self.current_env, is_init)
             methods[method.name.lexeme] = function
 
-        plox_class: PloxClass = PloxClass(class_stmt.name.lexeme, methods)
+        plox_class: PloxClass = PloxClass(class_stmt.name.lexeme, superclass, methods)
         self.current_env.assign(class_stmt.name, plox_class)
 
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:

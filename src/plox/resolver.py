@@ -61,6 +61,11 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         self._declare(class_stmt.name)
         self._define(class_stmt.name)
 
+        if class_stmt.superclass is not None:
+            if class_stmt.name.lexeme == class_stmt.superclass.name.lexeme:
+                self.on_semantic_error(class_stmt.superclass.name, "A class can't inherit from itself.")
+            self._resolve_expression(class_stmt.superclass)
+
         self._begin_scope()
         self.scopes[-1]["this"] = True
 
