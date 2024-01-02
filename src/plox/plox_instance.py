@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Any
 from plox.plox_class import PloxClass
+from plox.plox_function import PloxFunction
 from plox.plox_runtime_error import PloxRuntimeError
 from plox.token import Token
 

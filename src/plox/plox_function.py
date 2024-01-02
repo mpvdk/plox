@@ -9,11 +9,12 @@ from plox.environment import Environment
 #TODO: fix (it's annoying...)
 
 class PloxFunction(PloxCallable):
-    def __init__(self, name: str | None, declaration: FunctionExpr, closure: Environment):
+    def __init__(self, name: str | None, declaration: FunctionExpr, closure: Environment, is_class_init: bool):
         super().__init__()
-        self.name = name
-        self.declaration = declaration
-        self.closure = closure
+        self.name: str | None = name
+        self.declaration: FunctionExpr = declaration
+        self.closure: Environment = closure
+        self.is_class_init: bool = is_class_init # is this function a class init function?
 
     def arity(self) -> int:
         return len(self.declaration.params)
@@ -22,7 +23,7 @@ class PloxFunction(PloxCallable):
     def bind(self, instance):
         environment: Environment = Environment(self.closure)
         environment.define("this", instance)
-        return PloxFunction(self.name, self.declaration, environment)
+        return PloxFunction(self.name, self.declaration, environment, self.is_class_init)
 
     def call(self, interpreter, arguments: list[Any]):
         environment: Environment = Environment(self.closure)
@@ -33,7 +34,12 @@ class PloxFunction(PloxCallable):
         try:
             interpreter.execute_block(self.declaration.body, environment)
         except PloxReturn as plox_return:
+            if self.is_class_init:
+                return self.closure.get_at(0, "this")
             return plox_return.value
+
+        if self.is_class_init:
+            return self.closure.get_at(0, "this")
 
     def to_string(self) -> str:
         if self.name:

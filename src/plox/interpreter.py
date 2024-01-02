@@ -62,7 +62,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
             for statement in statements:
                 self._execute(statement)
         except PloxRuntimeError as err:
-            self.on_runtime_error(err)
+            self.on_runtime_error(err.token, err.message)
 
     # Statement visits
 
@@ -79,7 +79,8 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
         methods: dict[str, PloxFunction] = {}
         for method in class_stmt.methods:
-            function: PloxFunction = PloxFunction(method.name.lexeme, method.function, self.current_env)
+            is_init: bool = method.name == "init"
+            function: PloxFunction = PloxFunction(method.name.lexeme, method.function, self.current_env, is_init)
             methods[method.name.lexeme] = function
 
         plox_class: PloxClass = PloxClass(class_stmt.name.lexeme, methods)
@@ -91,8 +92,8 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
             print(res)
 
     def visit_function_stmt(self, function_stmt: FunctionStmt) -> None:
-        fn = PloxFunction(function_stmt.name.lexeme, function_stmt.function, self.current_env)
-        self.current_env.define(function_stmt.name.lexeme, fn)
+        function = PloxFunction(function_stmt.name.lexeme, function_stmt.function, self.current_env, False)
+        self.current_env.define(function_stmt.name.lexeme, function)
 
     def visit_if_stmt(self, if_stmt: IfStmt) -> None:
         if self._to_bool(self._evaluate(if_stmt.condition)):

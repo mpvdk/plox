@@ -93,6 +93,8 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         if self.current_function is FunctionType.NONE:
             self.on_semantic_error(return_stmt.keyword, "Can't return from top-level code.")
         if not return_stmt.value == None:
+            if self.current_function is FunctionType.INITIALIZER:
+                self.on_semantic_error(return_stmt.keyword, "Can't return a value from a class initializer.")
             self._resolve_expression(return_stmt.value)
 
     def visit_variable_stmt(self, variable_stmt: VariableStmt) -> None:
