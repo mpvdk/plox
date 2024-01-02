@@ -34,19 +34,26 @@ class Plox:
             self.had_syntactic_error = False
             return
 
-        resolver = Resolver(self.interpreter)
+        resolver = Resolver(self.interpreter, self.semantic_error)
         resolver.resolve_statements(statements)
+
+        if self.had_semantic_error:
+            self.had_semantic_error = False
+            return
 
         self.interpreter.interpret(statements)
 
     def lexical_error(self, line: int, message: str):
         """
-        Handle error
+        Handle lexical error
         """
         self.had_lexical_error = True
         print(f"[line {line}] Scan error : {message}")
 
     def syntactic_error(self, token: Token, message: str):
+        """
+        Handle parse error.
+        """
         self.had_syntactic_error = True
         if token.token_type == TokenType.EOF:
             print(f"[line {token.line}] Parse error at end: {message}")
@@ -54,6 +61,9 @@ class Plox:
             print(f"[line {token.line}] Parse error at {token.lexeme}: {message}")
 
     def semantic_error(self, error: PloxRuntimeError):
+        """
+        Handle semantic error.
+        """
         self.had_semantic_error = True
         print(f"[line {error.token.line}] Runtime error: {error.message}")
 

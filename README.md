@@ -13,15 +13,21 @@ First clone this repository and `cd` into it:
 git clone git@github.com:mpvdk/plox.git && cd plox
 ```
 
-From here you have two options
+Then just run the entry point located in the root.
 
-1) Just run the entry point in the root:
+For interactive shell:
 
 ```shell
 ./plox
 ```
 
-2) Or install plox with pip, which will allow you to run `plox` from anywhere:
+To run a script:
+
+```shell
+./plox [file]
+```
+
+You can also install plox with pip, which will allow you to run `plox` from anywhere:
 
 ```shell
 pip install .

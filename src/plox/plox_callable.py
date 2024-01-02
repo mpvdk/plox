@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any
 #from plox.interpreter import Interpreter
-# can't import Interpreter due to some circular import error
-# TODO learn what the problem is and fix
+#can't import because of circular import
+#TODO: fix (it's annoying...)
 
 class PloxCallable(ABC):
     @abstractmethod

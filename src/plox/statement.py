@@ -18,6 +18,10 @@ class StatementVisitor(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_class_stmt(self, class_stmt: ClassStmt):
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt):
         raise NotImplementedError
     
@@ -65,6 +69,16 @@ class BlockStmt(Statement):
         return visitor.visit_block_stmt(self)
 
 
+class ClassStmt(Statement):
+    def __init__(self, name: Token, methods: list[FunctionStmt]):
+        self.name: Token = name
+        self.methods: list[FunctionStmt] = methods
+
+    def accept(self, visitor: StatementVisitor):
+        """ Call the visitor """
+        return visitor.visit_class_stmt(self)
+
+
 class BreakStmt(Statement):
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
@@ -73,7 +87,7 @@ class BreakStmt(Statement):
 
 class ExpressionStmt(Statement):
     def __init__(self, expression: Expression):
-        self.expression = expression
+        self.expression: Expression = expression
 
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
@@ -82,8 +96,8 @@ class ExpressionStmt(Statement):
 
 class FunctionStmt(Statement):
     def __init__(self, name: Token, function: FunctionExpr):
-        self.name = name
-        self.function = function
+        self.name: Token = name
+        self.function: FunctionExpr = function
 
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
@@ -92,9 +106,9 @@ class FunctionStmt(Statement):
 
 class IfStmt(Statement):
     def __init__(self, condition: Expression, then_block: Statement, else_block: Statement | None):
-        self.condition = condition
-        self.then_block = then_block
-        self.else_block = else_block
+        self.condition: Expression = condition
+        self.then_block: Statement = then_block
+        self.else_block: Statement | None = else_block
 
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
@@ -103,7 +117,7 @@ class IfStmt(Statement):
 
 class PrintStmt(Statement):
     def __init__(self, expression: Expression):
-        self.expression = expression
+        self.expression: Expression = expression
 
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
@@ -112,8 +126,8 @@ class PrintStmt(Statement):
 
 class ReturnStmt(Statement):
     def __init__(self, keyword: Token, value: Expression | None):
-        self.keyword = keyword
-        self.value = value
+        self.keyword: Token = keyword
+        self.value: Expression | None = value
 
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
@@ -122,8 +136,8 @@ class ReturnStmt(Statement):
 
 class VariableStmt(Statement):
     def __init__(self, name: Token, initializer: Expression | None):
-        self.name = name
-        self.initializer = initializer
+        self.name: Token = name
+        self.initializer: Expression | None = initializer
 
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
@@ -132,10 +146,9 @@ class VariableStmt(Statement):
 
 class WhileStmt(Statement):
     def __init__(self, condition: Expression, body: Statement):
-        self.condition = condition
-        self.body = body
+        self.condition: Expression = condition
+        self.body: Statement = body
 
     def accept(self, visitor: StatementVisitor):
         """ Call the visitor """
         return visitor.visit_while_stmt(self)
-

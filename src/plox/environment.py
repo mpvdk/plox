@@ -21,7 +21,7 @@ class Environment:
             self.values[name.lexeme]['value'] = value
             self.values[name.lexeme]['initialized'] = True
             return value
-        elif self.enclosing != None:
+        elif self.enclosing is not None:
             self.enclosing.assign(name, value)
             return value
 
@@ -31,7 +31,7 @@ class Environment:
         self._ancestor(distance).values[name.lexeme] = value
 
     def define(self, name: str, value: Any = None):
-        if value != None:
+        if value is not None:
             val_info: ValueInfo = {"value": value, "initialized": True}
             self.values[name] = val_info
         else:
@@ -41,16 +41,19 @@ class Environment:
     def get(self, name: Token):
         if name.lexeme in self.values:
             if self.values[name.lexeme]['initialized'] == True:
-                return self.values[name.lexeme]['value']
+                val_info: ValueInfo = self.values[name.lexeme]
+                return val_info['value']
             else:
                 raise PloxRuntimeError(name, f"{name.lexeme} not initialized")
-        elif self.enclosing != None:
-            return self.enclosing.get(name)
+        elif self.enclosing is not None:
+            val_info: ValueInfo = self.enclosing.get(name)
+            return val_info['value']
 
         raise PloxRuntimeError(name, f"Undefined variable {name.lexeme}")
 
     def get_at(self, distance: int, name: str):
-        return self._ancestor(distance).values.get(name)
+        val_info: ValueInfo = self._ancestor(distance).values.get(name)
+        return val_info['value']
 
     def _ancestor(self, distance: int) -> Environment:
         env: Environment = self

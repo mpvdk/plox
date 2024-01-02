@@ -7,15 +7,18 @@ from plox.expression import (
     CallExpr,
     Expression,
     FunctionExpr,
+    GetExpr,
     GroupingExpr,
     LiteralExpr,
     LogicalExpr,
+    SetExpr,
     UnaryExpr,
     VariableExpr,
 )
 from plox.statement import (
     BlockStmt,
     BreakStmt,
+    ClassStmt,
     ExpressionStmt,
     FunctionStmt,
     IfStmt,
@@ -62,7 +65,7 @@ class Parser:
         """
         try:
             if self._match(TokenType.CLASS):
-                return None
+                return self._class_declaration()
             if self._check(TokenType.FUN) and self._check_next(TokenType.IDENTIFIER):
                 self._consume(TokenType.FUN, "")
                 return self._function("function")
@@ -228,6 +231,18 @@ class Parser:
 
     # Declarations
 
+    def _class_declaration(self) -> Statement:
+        name: Token = self._consume(TokenType.IDENTIFIER, "Expect class name.")
+        self._consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+        
+        methods: list[FunctionStmt] = []
+        while not self._at_end_of_token_list() and not self._check(TokenType.RIGHT_BRACE):
+            methods.append(self._function("method"))
+
+        self._consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+
+        return ClassStmt(name, methods)
+
     def _function(self, kind: Literal["function", "method"]) -> FunctionStmt: 
         """
         Production: function declaration.
@@ -283,8 +298,12 @@ class Parser:
             value: Expression = self._assignment()
 
             if isinstance(expr, VariableExpr):
+                # plain variable assignment
                 name: Token = expr.name
                 return AssignExpr(name, value)
+            elif isinstance(expr, GetExpr):
+                # object property assignment
+                return SetExpr(expr.object, expr.name, value)
 
             self.on_syntax_error(equals, "Invalid assignment target.")
 
@@ -394,6 +413,9 @@ class Parser:
         while True:
             if self._match(TokenType.LEFT_PAREN):
                 expr = self._finish_call(expr)
+            elif self._match(TokenType.DOT):
+                name: Token = self._consume(TokenType.IDENTIFIER, "Expect property name after '.'.")
+                expr = GetExpr(expr, name)
             else:
                 break
 

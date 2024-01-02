@@ -4,8 +4,8 @@ from plox.plox_callable import PloxCallable
 from plox.plox_return import PloxReturn
 from plox.environment import Environment
 #from plox.interpreter import Interpreter
-# can't import Interpreter due to some circular import error
-# TODO learn what the problem is and fix
+#can't import because of circular import
+#TODO: fix (it's annoying...)
 
 class PloxFunction(PloxCallable):
     def __init__(self, name: str | None, declaration: FunctionExpr, closure: Environment):
@@ -13,6 +13,9 @@ class PloxFunction(PloxCallable):
         self.name = name
         self.declaration = declaration
         self.closure = closure
+
+    def arity(self) -> int:
+        return len(self.declaration.params)
 
     def call(self, interpreter, arguments: list[Any]):
         environment: Environment = Environment(self.closure)
@@ -24,10 +27,6 @@ class PloxFunction(PloxCallable):
             interpreter.execute_block(self.declaration.body, environment)
         except PloxReturn as plox_return:
             return plox_return.value
-
-
-    def arity(self) -> int:
-        return len(self.declaration.params)
 
     def to_string(self) -> str:
         if self.name:

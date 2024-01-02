@@ -1,7 +1,9 @@
 from math import ceil
 from typing import Any, Callable
+from plox.plox_instance import PloxInstance
 
 from plox.plox_return import PloxReturn
+from plox.plox_class import PloxClass
 from plox.environment import Environment
 from plox.expression import (
     AssignExpr,
@@ -10,17 +12,19 @@ from plox.expression import (
     Expression,
     ExpressionVisitor,
     FunctionExpr,
+    GetExpr,
     GroupingExpr,
     LiteralExpr,
     LogicalExpr,
+    SetExpr,
     UnaryExpr,
     VariableExpr,
 )
-from plox.plox_callable import PloxCallable
 from plox.plox_function import PloxFunction
 from plox.plox_runtime_error import PloxRuntimeError
 from plox.statement import (
     BlockStmt,
+    ClassStmt,
     ExpressionStmt,
     FunctionStmt,
     IfStmt,
@@ -69,19 +73,30 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     def visit_break_stmt() -> None:
         raise BreakException
 
+    def visit_class_stmt(self, class_stmt: ClassStmt) -> None:
+        self.current_env.define(class_stmt.name.lexeme, None)
+
+        methods: dict[str, PloxFunction] = {}
+        for method in class_stmt.methods:
+            function: PloxFunction = PloxFunction(None, method.function, self.current_env)
+            methods[method.name.lexeme] = function
+
+        plox_class: PloxClass = PloxClass(class_stmt.name.lexeme, methods)
+        self.current_env.assign(class_stmt.name, plox_class)
+
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:
         res = self._evaluate(expression_stmt.expression)
         if self.single_statement:
             print(res)
 
     def visit_function_stmt(self, function_stmt: FunctionStmt) -> None:
-        fn = PloxFunction(function_stmt.name, function_stmt.function, self.current_env)
+        fn = PloxFunction(function_stmt.name.lexeme, function_stmt.function, self.current_env)
         self.current_env.define(function_stmt.name.lexeme, fn)
 
     def visit_if_stmt(self, if_stmt: IfStmt) -> None:
         if self._to_bool(self._evaluate(if_stmt.condition)):
             self._execute(if_stmt.then_block)
-        elif if_stmt.else_block != None:
+        elif if_stmt.else_block is not None:
             self._execute(if_stmt.else_block)
 
     def visit_print_stmt(self, print_stmt: PrintStmt) -> None:
@@ -90,7 +105,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     def visit_return_stmt(self, return_stmt: ReturnStmt) -> None:
         value = None
-        if return_stmt.value != None:
+        if return_stmt.value is not None:
             value = self._evaluate(return_stmt.value)
         raise PloxReturn(value)
 
@@ -114,7 +129,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     def visit_assign_expr(self, assign_expr: AssignExpr) -> Any:
         value = self._evaluate(assign_expr.value)
         distance: int = self.locals[assign_expr]
-        if distance != None:
+        if distance is not None:
             self.current_env.assign_at(distance, assign_expr.name, value)
         else:
             self.global_env.assign(assign_expr.name, value)
@@ -164,6 +179,8 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         return None
 
     def visit_call_expr(self, call_expr: CallExpr) -> Any:
+        # Importing locally to prevent circular imports
+        from plox.plox_callable import PloxCallable
         callee = self._evaluate(call_expr.callee)
 
         arguments = [self._evaluate(arg) for arg in call_expr.arguments]
@@ -178,6 +195,12 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     def visit_function_expr(self, function_expr: FunctionExpr) -> Any:
         return PloxFunction(None, function_expr, self.global_env)
+
+    def visit_get_expr(self, get_expr: GetExpr) -> Any:
+        object: Any = self._evaluate(get_expr.object)
+        if isinstance(object, PloxInstance):
+            return object.get(get_expr.name)
+        raise PloxRuntimeError(get_expr.name, "Only class instances have properties.")
 
     def visit_grouping_expr(self, grouping_expr: GroupingExpr):
         return self._evaluate(grouping_expr.expression)
@@ -197,9 +220,20 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
             if not self._to_bool(left):
                 return left
 
-        return self._evaluate(expr.right)
+        return self._evaluate(logical_expr.right)
 
-    def visit_unary_expr(self, unary_expr: UnaryExpr):
+    def visit_set_expr(self, set_expr: SetExpr) -> Any:
+        object: Any = self._evaluate(set_expr.object)
+
+        if not isinstance(object, PloxInstance):
+            raise PloxRuntimeError(set_expr.name, "Only instances have fields.")
+
+        value: Any = self._evaluate(set_expr.value)
+
+        object.set(set_expr.name, value)
+        return value
+
+    def visit_unary_expr(self, unary_expr: UnaryExpr) -> float | bool | None:
         right = self._evaluate(unary_expr.right)
 
         match unary_expr.operator:
@@ -233,9 +267,9 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         finally:
             self.current_env = prev_env
 
-    def _look_up_variable(self, name: str, variable_expr: VariableExpr):
-        distance: int = self.locals[variable_expr]
-        if distance != None:
+    def _look_up_variable(self, name: Token, variable_expr: VariableExpr):
+        distance: int | None = self.locals.get(variable_expr)
+        if distance is not None:
             return self.current_env.get_at(distance, name.lexeme)
         else:
             return self.global_env.get(name)

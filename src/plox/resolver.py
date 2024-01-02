@@ -1,3 +1,4 @@
+from typing import Callable
 from plox.expression import (
     AssignExpr, 
     BinaryExpr,
@@ -5,15 +6,20 @@ from plox.expression import (
     Expression, 
     ExpressionVisitor,
     FunctionExpr,
+    GetExpr,
     GroupingExpr,
     LiteralExpr,
     LogicalExpr,
+    SetExpr,
     UnaryExpr, 
     VariableExpr
 )
+from plox.function_type import FunctionType
 from plox.interpreter import Interpreter
 from plox.statement import (
+    BlockStmt,
     BreakStmt,
+    ClassStmt,
     ExpressionStmt, 
     FunctionStmt, 
     IfStmt, 
@@ -28,13 +34,15 @@ from plox.token import Token
 
 
 class Resolver(ExpressionVisitor, StatementVisitor):
-    def __init__(self, interpreter: Interpreter):
+    def __init__(self, interpreter: Interpreter, on_semantic_error: Callable):
         self.interpreter = interpreter
         self.scopes: list[dict[str, bool]] = []
+        self.on_semantic_error = on_semantic_error
+        self.current_function = FunctionType.NONE
 
     # Statement visits
 
-    def visit_block_stmt(self, block_stmt) -> None:
+    def visit_block_stmt(self, block_stmt: BlockStmt) -> None:
         self._begin_scope()
         for stmt in block_stmt.statements:
             self._resolve_statement(stmt)
@@ -43,13 +51,21 @@ class Resolver(ExpressionVisitor, StatementVisitor):
     def visit_break_stmt(self, break_stmt: BreakStmt) -> None:
         return None
 
+    def visit_class_stmt(self, class_stmt: ClassStmt) -> None:
+        self._declare(class_stmt.name)
+        self._define(class_stmt.name)
+
+        for method in class_stmt.methods:
+            declaration: FunctionType = FunctionType.METHOD
+            self._resolve_function(method.function, declaration)
+
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:
         self._resolve_expression(expression_stmt.expression)
 
     def visit_function_stmt(self, function_stmt: FunctionStmt) -> None:
         self._declare(function_stmt.name)
         self._define(function_stmt.name)
-        self._resolve_function(function_stmt.function)
+        self._resolve_function(function_stmt.function, FunctionType.FUNCTION)
 
     def visit_if_stmt(self, if_stmt: IfStmt) -> None:
         self._resolve_expression(if_stmt.condition)
@@ -62,12 +78,14 @@ class Resolver(ExpressionVisitor, StatementVisitor):
             self._resolve_expression(print_stmt.expression)
 
     def visit_return_stmt(self, return_stmt: ReturnStmt) -> None:
+        if self.current_function is FunctionType.NONE:
+            self.on_semantic_error(return_stmt.keyword, "Can't return from top-level code.")
         if not return_stmt.value == None:
             self._resolve_expression(return_stmt.value)
 
     def visit_variable_stmt(self, variable_stmt: VariableStmt) -> None:
         self._declare(variable_stmt.name)
-        if variable_stmt.initializer != None:
+        if variable_stmt.initializer is not None:
             self._resolve_expression(variable_stmt.initializer)
         self._define(variable_stmt.name)
 
@@ -96,6 +114,9 @@ class Resolver(ExpressionVisitor, StatementVisitor):
     def visit_grouping_expr(self, grouping_expr: GroupingExpr) -> None:
         self._resolve_expression(grouping_expr.expression)
 
+    def visit_get_expr(self, get_expr: GetExpr) -> None:
+        self._resolve_expression(get_expr.object)
+
     def visit_literal_expr(self, literal_expr: LiteralExpr) -> None:
         return None
 
@@ -103,13 +124,16 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         self._resolve_expression(logical_expr.left)
         self._resolve_expression(logical_expr.right)
 
+    def visit_set_expr(self, set_expr: SetExpr) -> None:
+        self._resolve_expression(set_expr.value)
+        self._resolve_expression(set_expr.object)
+
     def visit_unary_expr(self, unary_expr: UnaryExpr) -> None:
         self._resolve_expression(unary_expr.right)
 
     def visit_variable_expr(self, variable_expr: VariableExpr) -> None:
         if len(self.scopes) > 0 and self.scopes[-1][variable_expr.name.lexeme] == False:
-            #TODO: report semantic error that is not a runtime error
-            # Error message: ""
+            self.on_semantic_error(variable_expr.name, "Can't read local variable in its own initializer.")
             return
 
         self._resolve_local(variable_expr, variable_expr.name)
@@ -134,18 +158,25 @@ class Resolver(ExpressionVisitor, StatementVisitor):
             if name.lexeme in scope:
                 self.interpreter.resolve(expr, i)
 
-    def _resolve_function(self, function_expr: FunctionExpr) -> None:
+    def _resolve_function(self, function_expr: FunctionExpr, type: FunctionType) -> None:
         """
         Resolve all params and the body of a function.
         Used by both function statements and lambdas.
         """
+        enclosing_function: FunctionType = self.current_function
+        self.current_function = type
+
         self._begin_scope()
+
         for param in function_expr.params:
             self._declare(param)
             self._define(param)
         for stmt in function_expr.body:
             self._resolve_statement(stmt)
+
         self._end_scope()
+
+        self.current_function = enclosing_function
 
     def _begin_scope(self) -> None:
         """
@@ -168,6 +199,9 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         """
         if len(self.scopes) > 0:
             scope: dict[str, bool] = self.scopes[-1]
+            if name.lexeme in scope:
+                self.on_semantic_error(name, "Already a variable with this name in this scope.")
+                return
             scope[name.lexeme] = False
 
     def _define(self, name: Token) -> None:
