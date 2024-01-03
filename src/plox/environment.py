@@ -11,8 +11,8 @@ class ValueInfo(TypedDict):
 
 
 class Environment:
-    def __init__(self, enclosing: "Environment | None" = None) -> None:
-        self.enclosing = enclosing
+    def __init__(self, enclosing: Environment | None = None) -> None:
+        self.enclosing: Environment | None = enclosing
         self.values: dict[str, ValueInfo] = {}
 
     def assign(self, name: Token, value: Any):

@@ -28,7 +28,12 @@ class PloxClass(PloxCallable):
         return instance
     
     def find_method(self, identifier: str) -> PloxFunction | None:
-        return self.methods.get(identifier)
+        method: PloxFunction | None = self.methods.get(identifier)
+        if method is not None:
+            return method
+        
+        if self.superclass is not None:
+            return self.superclass.find_method(identifier)
 
     def __str__(self):
         return f"<class {self.name}>"

@@ -47,6 +47,10 @@ class ExpressionVisitor(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_super_expr(self, super_expr: SuperExpr):
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_this_expr(self, this_expr: ThisExpr):
         raise NotImplementedError
 
@@ -159,6 +163,16 @@ class SetExpr(Expression):
     def accept(self, visitor: ExpressionVisitor):
         """ Call the visitor """
         return visitor.visit_set_expr(self)
+
+
+class SuperExpr(Expression):
+    def __init__(self, keyword: Token, method: Token):
+        self.keyword: Token = keyword
+        self.method: Token = method
+
+    def accept(self, visitor: ExpressionVisitor):
+        """ Call the visitor """
+        return visitor.visit_super_expr(self)
 
 
 class ThisExpr(Expression):

@@ -12,6 +12,7 @@ from plox.expression import (
     LiteralExpr,
     LogicalExpr,
     SetExpr,
+    SuperExpr,
     ThisExpr,
     UnaryExpr,
     VariableExpr,
@@ -463,6 +464,12 @@ class Parser:
 
         if self._match(TokenType.STRING):
             return LiteralExpr(self._previous().literal)
+
+        if self._match(TokenType.SUPER):
+            keyword: Token = self._previous()
+            self._consume(TokenType.DOT, "Expected '.' after 'super'.")
+            method: Token = self._consume(TokenType.IDENTIFIER, "Expected superclass method name.")
+            return SuperExpr(keyword, method)
 
         if self._match(TokenType.THIS):
             return ThisExpr(self._previous())

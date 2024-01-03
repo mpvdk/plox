@@ -17,6 +17,7 @@ from plox.expression import (
     LiteralExpr,
     LogicalExpr,
     SetExpr,
+    SuperExpr,
     ThisExpr,
     UnaryExpr,
     VariableExpr,
@@ -48,9 +49,9 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     """
 
     def __init__(self, on_runtime_error: Callable):
-        self.on_runtime_error = on_runtime_error
-        self.global_env = Environment()
-        self.current_env = self.global_env
+        self.on_runtime_error: Callable = on_runtime_error
+        self.global_env: Environment = Environment()
+        self.current_env: Environment = self.global_env
         self.locals: dict[Expression, int] = {}
         # Used to determine if we should print result of expression statement
         # Answer is "no" by default (hence "False")
@@ -67,7 +68,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
     # Statement visits
 
     def visit_block_stmt(self, block_stmt: BlockStmt) -> None:
-        new_env = Environment(self.current_env)
+        new_env: Environment = Environment(self.current_env)
         self.execute_block(block_stmt.statements, new_env)
 
     @staticmethod
@@ -83,6 +84,10 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
         self.current_env.define(class_stmt.name.lexeme, None)
 
+        if class_stmt.superclass is not None:
+            self.current_env = Environment(self.current_env)
+            self.current_env.define("super", superclass)
+
         methods: dict[str, PloxFunction] = {}
         for method in class_stmt.methods:
             is_init: bool = method.name == "init"
@@ -90,6 +95,10 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
             methods[method.name.lexeme] = function
 
         plox_class: PloxClass = PloxClass(class_stmt.name.lexeme, superclass, methods)
+
+        if superclass is not None and self.current_env.enclosing is not None:
+            self.current_env = self.current_env.enclosing
+
         self.current_env.assign(class_stmt.name, plox_class)
 
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:
@@ -202,7 +211,7 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         return callee.call(self, arguments)
 
     def visit_function_expr(self, function_expr: FunctionExpr) -> Any:
-        return PloxFunction(None, function_expr, self.global_env)
+        return PloxFunction(None, function_expr, self.global_env, False)
 
     def visit_get_expr(self, get_expr: GetExpr) -> Any:
         object: Any = self._evaluate(get_expr.object)
@@ -241,6 +250,20 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         object.set(set_expr.name, value)
         return value
 
+    def visit_super_expr(self, super_expr: SuperExpr) -> Any:
+        distance: int = self.locals[super_expr]
+
+        superclass = self.current_env.get_at(distance, "super")
+        assert isinstance(superclass, PloxClass)
+        method = superclass.find_method(super_expr.method.lexeme)
+
+        object = self.current_env.get_at(distance - 1, "this")
+        
+        if method is None:
+            raise PloxRuntimeError(super_expr.method, f"Undefined property '{super_expr.method.lexeme}'.")
+
+        return method.bind(object)
+
     def visit_this_expr(self, this_expr: ThisExpr) -> Any:
         return self._look_up_variable(this_expr.keyword, this_expr)
 
@@ -278,8 +301,8 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         finally:
             self.current_env = prev_env
 
-    def _look_up_variable(self, name: Token, variable_expr: VariableExpr):
-        distance: int | None = self.locals.get(variable_expr)
+    def _look_up_variable(self, name: Token, expr: Expression):
+        distance: int | None = self.locals.get(expr)
         if distance is not None:
             return self.current_env.get_at(distance, name.lexeme)
         else:

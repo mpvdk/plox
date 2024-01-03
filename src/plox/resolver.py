@@ -12,6 +12,7 @@ from plox.expression import (
     LiteralExpr,
     LogicalExpr,
     SetExpr,
+    SuperExpr,
     ThisExpr,
     UnaryExpr, 
     VariableExpr
@@ -64,7 +65,11 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         if class_stmt.superclass is not None:
             if class_stmt.name.lexeme == class_stmt.superclass.name.lexeme:
                 self.on_semantic_error(class_stmt.superclass.name, "A class can't inherit from itself.")
+            
+            self.current_class = ClassType.SUBCLASS
             self._resolve_expression(class_stmt.superclass)
+            self._begin_scope()
+            self.scopes[-1]["super"] = True
 
         self._begin_scope()
         self.scopes[-1]["this"] = True
@@ -74,6 +79,9 @@ class Resolver(ExpressionVisitor, StatementVisitor):
             self._resolve_function(method.function, declaration)
 
         self._end_scope()
+        if class_stmt.superclass is not None:
+            self._end_scope()
+
         self.current_class = enclosing_class
 
     def visit_expression_stmt(self, expression_stmt: ExpressionStmt) -> None:
@@ -146,6 +154,9 @@ class Resolver(ExpressionVisitor, StatementVisitor):
     def visit_set_expr(self, set_expr: SetExpr) -> None:
         self._resolve_expression(set_expr.value)
         self._resolve_expression(set_expr.object)
+
+    def visit_super_expr(self, super_expr: SuperExpr) -> None:
+        self._resolve_local(super_expr, super_expr.keyword)
 
     def visit_this_expr(self, this_expr: ThisExpr):
         if self.current_class is not ClassType.CLASS:
