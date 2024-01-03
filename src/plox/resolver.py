@@ -156,6 +156,11 @@ class Resolver(ExpressionVisitor, StatementVisitor):
         self._resolve_expression(set_expr.object)
 
     def visit_super_expr(self, super_expr: SuperExpr) -> None:
+        if self.current_class is ClassType.NONE:
+            self.on_semantic_error(super_expr.keyword, "Can't use 'super' outside of a class.")
+        elif self.current_class is not ClassType.SUBCLASS:
+            self.on_semantic_error(super_expr.keyword, "Can't use 'super' in a class with no superclass.")
+
         self._resolve_local(super_expr, super_expr.keyword)
 
     def visit_this_expr(self, this_expr: ThisExpr):
