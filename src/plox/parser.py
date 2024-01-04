@@ -104,6 +104,68 @@ class Parser:
         """
         return self._assignment()
 
+    # Declarations
+
+    def _class_declaration(self) -> Statement:
+        name: Token = self._consume(TokenType.IDENTIFIER, "Expect class name.")
+
+        superclass: VariableExpr | None = None
+        if self._match(TokenType.LESS):
+            self._consume(TokenType.IDENTIFIER, "Expect superclass name after '<'.")
+            superclass = VariableExpr(self._previous())
+
+        self._consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+        
+        methods: list[FunctionStmt] = []
+        while not self._at_end_of_token_list() and not self._check(TokenType.RIGHT_BRACE):
+            methods.append(self._function("method"))
+
+        self._consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+
+        return ClassStmt(name, superclass, methods)
+
+    def _function(self, kind: Literal["function", "method"]) -> FunctionStmt: 
+        """
+        Production: function declaration.
+        """
+        name: Token = self._consume(TokenType.IDENTIFIER, f"Expect {kind} name.")
+        return FunctionStmt(name, self._function_body(kind))
+
+    def _function_body(self, kind: Literal["function", "method"]):
+        self._consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind}.")
+
+        parameters: list[Token] = []
+        if not self._check(TokenType.RIGHT_PAREN):
+            first_param = self._consume(TokenType.IDENTIFIER, "Expect parameter name")
+            parameters.append(first_param)
+            while self._match(TokenType.COMMA):
+                if not len(parameters) >= 255:
+                    param = self._consume(TokenType.IDENTIFIER, "Expect parameter name")
+                    parameters.append(param)
+                else:
+                    self._error(self._peek(), "Can't have more than 255 parameters.")
+
+        self._consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters")
+        self._consume(TokenType.LEFT_BRACE, "Expected '{' before function body")
+        body: list[Statement] = self._block_statement()
+
+        return FunctionExpr(parameters, body)
+
+    def _var_declaration(self) -> VariableStmt:
+        """
+        Production: declaration.
+        """
+        name = self._consume(TokenType.IDENTIFIER, "Expect variable name")
+
+        initializer: Expression | None = None
+
+        if self._match(TokenType.EQUAL):
+            initializer = self._expression()
+
+        self._consume(TokenType.SEMICOLON, "Expect ';' after variable declaration")
+
+        return VariableStmt(name, initializer)
+
     # Statements
 
     def _break_statement(self) -> BreakStmt:
@@ -218,7 +280,9 @@ class Parser:
         statements: list[Statement] = []
 
         while not (self._check(TokenType.RIGHT_BRACE) or self._at_end_of_token_list()):
-            statements.append(self._declaration())
+            decl = self._declaration()
+            if decl is not None:
+                statements.append(decl)
 
         self._consume(TokenType.RIGHT_BRACE, "Expect '}' after block")
         return statements
@@ -230,68 +294,6 @@ class Parser:
         expr: Expression = self._expression()
         self._consume(TokenType.SEMICOLON, "Expect ';' after value")
         return ExpressionStmt(expr)
-
-    # Declarations
-
-    def _class_declaration(self) -> Statement:
-        name: Token = self._consume(TokenType.IDENTIFIER, "Expect class name.")
-
-        superclass: VariableExpr | None = None
-        if self._match(TokenType.LESS):
-            self._consume(TokenType.IDENTIFIER, "Expect superclass name after '<'.")
-            superclass = VariableExpr(self._previous())
-
-        self._consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
-        
-        methods: list[FunctionStmt] = []
-        while not self._at_end_of_token_list() and not self._check(TokenType.RIGHT_BRACE):
-            methods.append(self._function("method"))
-
-        self._consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
-
-        return ClassStmt(name, superclass, methods)
-
-    def _function(self, kind: Literal["function", "method"]) -> FunctionStmt: 
-        """
-        Production: function declaration.
-        """
-        name: Token = self._consume(TokenType.IDENTIFIER, f"Expect {kind} name.")
-        return FunctionStmt(name, self._function_body(kind))
-
-    def _function_body(self, kind: Literal["function", "method"]):
-        self._consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind}.")
-
-        parameters: list[Token] = []
-        if not self._check(TokenType.RIGHT_PAREN):
-            first_param = self._consume(TokenType.IDENTIFIER, "Expect parameter name")
-            parameters.append(first_param)
-            while self._match(TokenType.COMMA):
-                if not len(parameters) >= 255:
-                    param = self._consume(TokenType.IDENTIFIER, "Expect parameter name")
-                    parameters.append(param)
-                else:
-                    self._error(self._peek(), "Can't have more than 255 parameters.")
-
-        self._consume(TokenType.RIGHT_PAREN, "Expected ')' after parameters")
-        self._consume(TokenType.LEFT_BRACE, "Expected '{' before function body")
-        body: list[Statement] = self._block_statement()
-
-        return FunctionExpr(parameters, body)
-
-    def _var_declaration(self) -> VariableStmt:
-        """
-        Production: declaration.
-        """
-        name = self._consume(TokenType.IDENTIFIER, "Expect variable name")
-
-        initializer: Expression | None = None
-
-        if self._match(TokenType.EQUAL):
-            initializer = self._expression()
-
-        self._consume(TokenType.SEMICOLON, "Expect ';' after variable declaration")
-
-        return VariableStmt(name, initializer)
 
     # Expressions
 

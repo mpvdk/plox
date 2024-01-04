@@ -6,7 +6,6 @@ from plox.statement import Statement
 from plox.token import Token
 from plox.token_type import TokenType
 from plox.interpreter import Interpreter
-from plox.plox_runtime_error import PloxRuntimeError
 
 class Plox:
     """

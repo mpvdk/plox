@@ -54,10 +54,13 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         self.current_env: Environment = self.global_env
         self.locals: dict[Expression, int] = {}
         # Used to determine if we should print result of expression statement
-        # Answer is "no" by default (hence "False")
+        # Answer is "no" by default. Primarily meant for interactive mode
         self.single_statement: bool = False
 
     def interpret(self, statements: list[Statement]):
+        """
+        Main entry point into the interpreter.
+        """
         self.single_statement = len(statements) == 1
         try:
             for statement in statements:
@@ -65,7 +68,9 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         except PloxRuntimeError as err:
             self.on_runtime_error(err.token, err.message)
 
-    # Statement visits
+    ####################
+    # Statement visits #
+    ####################
 
     def visit_block_stmt(self, block_stmt: BlockStmt) -> None:
         new_env: Environment = Environment(self.current_env)
@@ -140,8 +145,10 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         except BreakException:
             # Do nothing - just break out of loop
             pass
-
-    # Expression visits
+    
+    #####################
+    # Expression visits #
+    #####################
 
     def visit_assign_expr(self, assign_expr: AssignExpr) -> Any:
         value = self._evaluate(assign_expr.value)
@@ -280,18 +287,34 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
         #return self.current_env.get(variable_expr.name)
         return self._look_up_variable(variable_expr.name, variable_expr)
 
-    # Misc
+    ###########
+    # Helpers #
+    ###########
 
     def _evaluate(self, expression: Expression):
+        """
+        Evaluate an expression (c.f. visitor pattern).
+        """
         return expression.accept(self)
 
     def _execute(self, statement: Statement):
+        """
+        Execute a statement (c.f. visitor pattern).
+        """
         statement.accept(self)
 
     def resolve(self, expression: Expression, depth: int):
+        """
+        Used by the resolver to let the interpreter know at which
+        environment depth to find an expression. 'expression' is
+        usually a VariableExpr, but can also be ThisExpr or SuperExpr.
+        """
         self.locals[expression] = depth
 
     def execute_block(self, statements: list[Statement], new_env: Environment):
+        """
+        Execute a list of statements in the context of a given environment
+        """
         prev_env: Environment = self.current_env
         self.current_env = new_env
 
@@ -302,6 +325,11 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
             self.current_env = prev_env
 
     def _look_up_variable(self, name: Token, expr: Expression):
+        """
+        Look up a variable. 
+        Local if resolver put it in self.locals.
+        Global otherwise.
+        """
         distance: int | None = self.locals.get(expr)
         if distance is not None:
             return self.current_env.get_at(distance, name.lexeme)
@@ -347,6 +375,9 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     @staticmethod
     def _binary_plus(expr: BinaryExpr, a: Any, b: Any):
+        """
+        Add two literals (ints, floats, strings, or a combination)
+        """
         if isinstance(a, (int, float)) and isinstance(b, (int, float)):
             return a + b
 
@@ -360,6 +391,9 @@ class Interpreter(ExpressionVisitor, StatementVisitor):
 
     @staticmethod
     def _binary_slash(expr: BinaryExpr, left: int | float, right: int | float):
+        """
+        Divide two numbers.
+        """
         if int(ceil(right)) == 0:
             raise PloxRuntimeError(expr.operator, "Cannot divide by zero")
         return left / right
